@@ -625,7 +625,7 @@ main {
 
 .contact-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1.3fr 1.3fr 0.9fr;
+  grid-template-columns: 1.4fr 1fr 1.3fr 1.3fr 0.9fr 36px;
   gap: 10px;
   align-items: center;
 }
@@ -643,6 +643,17 @@ main {
   color: var(--text);
   width: 100%;
 }
+
+.contact-link-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px 8px;
+}
+
+.contact-link-btn:hover { color: var(--accent); border-color: var(--accent); }
 
 .event-completion.incomplete { background: var(--danger-bg); color: var(--danger); }
 
