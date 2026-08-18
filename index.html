@@ -5,38 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
   <div id="login-screen">
-    <div class="festival-badge">19. aDevantgarde-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
+    <div class="festival-badge login-badge">19. aDevantgarde-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
     <h1>Festival Dashboard</h1>
     <p>Aufgaben, Kalender und mehr an einem Ort — direkt über dein Google-Konto.</p>
     <button id="login-btn" class="btn primary">Mit Google anmelden</button>
   </div>
 
-  <div id="app" class="hidden">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="festival-badge">19. aDevantgarde-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
-        <div>
-          <h1>Festival Dashboard</h1>
-          <div class="subtitle" id="user-label"></div>
-        </div>
+  <div id="app" class="hidden app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="festival-badge">19. aDe-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
+        <div class="sidebar-stub"></div>
       </div>
-      <button id="logout-btn" class="btn">Abmelden</button>
-    </div>
 
-    <div class="tabs">
-      <button id="tab-tasks" class="active">Aufgaben</button>
-      <button id="tab-calendar">Kalender</button>
-    </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+        <button class="nav-item" data-view="calendar"><i class="ti ti-calendar-event"></i>Kalender</button>
+        <button class="nav-item" data-view="tasks"><i class="ti ti-checklist"></i>Aufgaben</button>
+        <button class="nav-item" data-view="events"><i class="ti ti-ticket"></i>Events</button>
+        <button class="nav-item" data-view="inventory"><i class="ti ti-package"></i>Inventar</button>
+        <button class="nav-item" data-view="contracts"><i class="ti ti-file-text"></i>Verträge</button>
+        <button class="nav-item" data-view="contacts"><i class="ti ti-address-book"></i>Kontaktdaten</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="subtitle" id="user-label"></div>
+        <button id="logout-btn" class="btn">Abmelden</button>
+      </div>
+    </aside>
 
     <main>
       <div class="status-msg" id="status-msg"></div>
 
-      <div id="view-tasks">
+      <div id="view-dashboard" class="view">
+        <h2 class="view-title">Dashboard</h2>
+        <div id="dashboard-stats" class="dashboard-stats"></div>
+        <div class="dashboard-section">
+          <div class="dashboard-section-title">Nächste Termine</div>
+          <div id="dashboard-upcoming"></div>
+        </div>
+      </div>
+
+      <div id="view-tasks" class="view hidden">
         <div class="filter-row">
           <div class="filters">
             <button id="filter-mine" class="active">Nur meine</button>
@@ -67,7 +85,7 @@
         <div id="sections"></div>
       </div>
 
-      <div id="view-calendar" class="hidden">
+      <div id="view-calendar" class="view hidden">
         <div class="cal-header">
           <div class="cal-nav">
             <button id="cal-prev" class="btn" aria-label="Zurück"><i class="ti ti-chevron-left"></i></button>
@@ -99,6 +117,38 @@
         </div>
 
         <div id="calendar-grid"></div>
+      </div>
+
+      <div id="view-events" class="view hidden">
+        <div class="placeholder-view">
+          <i class="ti ti-ticket"></i>
+          <h2>Events</h2>
+          <p>Dieser Bereich ist in Vorbereitung.</p>
+        </div>
+      </div>
+
+      <div id="view-inventory" class="view hidden">
+        <div class="placeholder-view">
+          <i class="ti ti-package"></i>
+          <h2>Inventar</h2>
+          <p>Dieser Bereich ist in Vorbereitung.</p>
+        </div>
+      </div>
+
+      <div id="view-contracts" class="view hidden">
+        <div class="placeholder-view">
+          <i class="ti ti-file-text"></i>
+          <h2>Verträge</h2>
+          <p>Dieser Bereich ist in Vorbereitung.</p>
+        </div>
+      </div>
+
+      <div id="view-contacts" class="view hidden">
+        <div class="placeholder-view">
+          <i class="ti ti-address-book"></i>
+          <h2>Kontaktdaten</h2>
+          <p>Dieser Bereich ist in Vorbereitung.</p>
+        </div>
       </div>
     </main>
   </div>
