@@ -183,6 +183,23 @@
       </div>
     </main>
     </div>
+
+    <div id="rider-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="rider-modal-title">Technical Rider</div>
+          <button type="button" id="rider-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div id="rider-modal-list" class="modal-body"></div>
+        <div class="modal-footer">
+          <label class="rider-done-check">
+            <input type="checkbox" id="rider-done-checkbox" />
+            Rider ist fertig zusammengestellt
+          </label>
+          <button type="button" id="rider-csv-btn" class="btn"><i class="ti ti-download"></i> CSV herunterladen</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="config.js"></script>
