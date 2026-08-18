@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=13" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -41,6 +41,7 @@
         <button class="nav-item" data-view="events"><i class="ti ti-ticket"></i>Events</button>
         <button class="nav-item" data-view="inventory"><i class="ti ti-package"></i>Inventar</button>
         <button class="nav-item" data-view="contracts"><i class="ti ti-file-text"></i>Verträge</button>
+        <button class="nav-item" data-view="programmheft"><i class="ti ti-book"></i>Programmheft</button>
         <button class="nav-item" data-view="contacts"><i class="ti ti-address-book"></i>Kontaktdaten</button>
       </nav>
     </aside>
@@ -177,6 +178,21 @@
         <div id="contracts-browser"></div>
       </div>
 
+      <div id="view-programmheft" class="view hidden">
+        <h2 class="view-title">Material Programmheft</h2>
+
+        <div class="inv-section-title">Allgemeiner Programmtext</div>
+        <textarea id="programmtext-input" class="programmtext-input" rows="6" placeholder="Allgemeiner Text fürs Programmheft…"></textarea>
+        <div class="programmtext-actions">
+          <span id="programmtext-status" class="contract-status"></span>
+          <button type="button" id="programmtext-save" class="btn primary">Text speichern</button>
+        </div>
+
+        <div class="inv-section-title inv-section-spaced">Beteiligte</div>
+        <p class="inv-hint">Bio und Foto reichen die Beteiligten selbst über ihren persönlichen Link ein (Link-Symbol).</p>
+        <div id="programmheft-list"></div>
+      </div>
+
       <div id="view-contacts" class="view hidden">
         <h2 class="view-title">Kontaktdaten</h2>
         <p class="inv-hint">Ensemble, Interpret:innen und Komponist:innen werden automatisch aus den Events übernommen. Email, Adresse und Telefon tragen die Personen selbst über ihren persönlichen Formular-Link ein (Link-Symbol) — hier nur zur Ansicht.</p>
@@ -222,9 +238,21 @@
         </div>
       </div>
     </div>
+    <div id="bio-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="bio-modal-title">Kurzbio</div>
+          <button type="button" id="bio-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div id="bio-modal-photo"></div>
+          <div id="bio-modal-text" class="bio-text"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>
