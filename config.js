@@ -32,6 +32,14 @@ const CONFIG = {
     // Dieselbe Apps-Script-Web-App-URL wie in kontakt-formular.html (WEBAPP_URL)
   WEBAPP_URL: "https://script.google.com/macros/s/AKfycbzohN2Ox1UMYQgh_Dg7wRATt1skan3BKdnFLl48N9Bx61snnXcvCRJ6nYoL1TzvjWsBOg/exec",
 
+    // Programmheft
+  PROGRAMMHEFT_SHEET_NAME: "Programmheft",
+  PROGRAMMTEXT_SHEET_NAME: "Programmtext",
+  // Maximale Zeichenzahl für Kurzbios (gilt im öffentlichen Formular)
+  BIO_MAX_CHARS: 800,
+  // URL, unter der programmheft-formular.html erreichbar ist
+  PROGRAMMHEFT_FORM_URL: "https://leonzmy.github.io/ade_intranet/programmheft-formular.html",
+
   CONTRACT_DETAILS_SHEET_NAME: "Vertragsdetails",
 ADMIN_KEY: "ade19-intern-9f3k2m",
   
