@@ -689,7 +689,7 @@ main {
   white-space: nowrap;
 }
 
-.status-pill.static { cursor: default; flex: 1; }
+.status-pill.static { cursor: default; }
 
 .status-pill.vorhanden { background: #e6f4ea; color: #1a7a3c; }
 .status-pill.fehlt { background: var(--danger-bg); color: var(--danger); }
