@@ -1479,3 +1479,14 @@ details summary {
   border-radius: var(--radius);
   margin-bottom: 14px;
 }
+
+.ph-subsection-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.ph-subsection-spaced { margin-top: 20px; }
