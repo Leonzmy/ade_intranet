@@ -1185,31 +1185,78 @@ details summary {
 
 /* ---------- Verträge ---------- */
 
-.contract-role-group { margin-bottom: 18px; }
+.contract-role-group {
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
 
 .contract-role-header {
+  cursor: pointer;
+  list-style: none;
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
-  margin-bottom: 8px;
+  padding: 12px 16px;
+  background: var(--surface-2);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+.contract-role-header::-webkit-details-marker { display: none; }
+.contract-role-header::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  font-size: 13px;
+}
+.contract-role-group[open] > .contract-role-header::before { transform: rotate(90deg); }
+
+.contract-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--neutral-bg);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.contract-role-body { padding: 10px 16px 14px; }
+
 .contract-event-group {
-  margin-left: 8px;
-  margin-bottom: 10px;
-  padding-left: 12px;
-  border-left: 2px solid var(--border);
+  margin-left: 4px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .contract-event-label {
-  font-size: 12.5px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  padding: 9px 12px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
+
+.contract-event-label::-webkit-details-marker { display: none; }
+.contract-event-label::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  font-size: 11px;
+}
+.contract-event-group[open] > .contract-event-label::before { transform: rotate(90deg); }
+
+.contract-event-body { padding: 8px; background: var(--neutral-bg); }
 
 .contract-person-row {
   display: flex;
@@ -1224,6 +1271,7 @@ details summary {
   background: var(--surface);
 }
 
+.contract-person-row:last-child { margin-bottom: 0; }
 .contract-person-row:hover { border-color: var(--accent); }
 
 .contract-person-name { font-size: 13.5px; font-weight: 500; }
@@ -1248,22 +1296,41 @@ details summary {
 
 .contract-contact-info strong { color: var(--text); }
 
-.contract-fields label {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 500;
-  margin: 10px 0 4px;
+.contract-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 
-.contract-fields input {
+.contract-field-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.contract-field-card label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.contract-field-card input {
   width: 100%;
   font-family: var(--font);
-  font-size: 13px;
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  font-size: 14px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
 }
+
+.contract-field-card input:focus { outline: none; }
+.contract-field-card:focus-within { border-color: var(--accent); }
 
 .contract-result {
   margin-top: 16px;
@@ -1280,14 +1347,53 @@ details summary {
 .template-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
 }
 
 .template-row:last-child { border-bottom: none; }
 
-.template-cat { width: 130px; flex-shrink: 0; font-size: 13px; font-weight: 500; }
+.template-cat-link {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.template-cat-link.muted {
+  color: var(--text);
+  text-decoration: none;
+  cursor: default;
+}
+
+.template-missing {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  font-family: var(--font);
+}
+
+.template-edit-btn {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+}
+
+.template-edit-btn:hover { color: var(--accent); }
+
+.template-edit-form {
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
 
 .template-url-input {
   flex: 1;
