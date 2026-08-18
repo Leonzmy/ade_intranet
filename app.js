@@ -119,7 +119,6 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.contractModalClose, closeContractModal);
   bindClick(els.contractGenerateBtn, handleGenerateContract);
   bindClick(document.getElementById("bio-modal-close"), closeBioModal);
-  bindClick(document.getElementById("programmtext-save"), saveProgrammtext);
   const bioModalEl = document.getElementById("bio-modal");
   if (bioModalEl) {
     bioModalEl.addEventListener("click", (e) => {
@@ -1606,7 +1605,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:Q50");
+    const range = eventsSheetRange("A2:R50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -1629,6 +1628,7 @@ async function loadEvents() {
           ensemble: r[14] || "",
           interpreten: r[15] || "",
           komponisten: r[16] || "",
+          programmtext: r[17] || "",
         };
       })
       .filter((ev) => ev.project);
@@ -2062,21 +2062,15 @@ async function handleGenerateContract() {
 // ---------- Programmheft ----------
 
 let programmheftData = []; // [{rowIndex, name, role, events, bio, photoUrl, updatedAt, token}]
-let programmtext = "";
 
 function programmheftSheetRange(a1) {
   return `${encodeURIComponent(CONFIG.PROGRAMMHEFT_SHEET_NAME)}!${a1}`;
 }
 
-function programmtextSheetRange(a1) {
-  return `${encodeURIComponent(CONFIG.PROGRAMMTEXT_SHEET_NAME)}!${a1}`;
-}
-
 async function loadProgrammheft() {
   try {
     const phUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmheftSheetRange("A2:G500")}`;
-    const ptUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmtextSheetRange("A2")}`;
-    const [phData, ptData] = await Promise.all([apiFetch(phUrl), apiFetch(ptUrl)]);
+    const phData = await apiFetch(phUrl);
 
     programmheftData = (phData.values || [])
       .map((r, i) => ({
@@ -2090,8 +2084,6 @@ async function loadProgrammheft() {
         token: r[6] || "",
       }))
       .filter((p) => p.name);
-
-    programmtext = ptData.values?.[0]?.[0] || "";
   } catch (e) {
     setStatus("Programmheft-Daten konnten nicht geladen werden: " + e.message, true);
   }
@@ -2158,9 +2150,6 @@ async function syncProgrammheft() {
 }
 
 function renderProgrammheft() {
-  const textEl = document.getElementById("programmtext-input");
-  if (textEl && document.activeElement !== textEl) textEl.value = programmtext;
-
   const container = document.getElementById("programmheft-list");
   if (!container) return;
 
@@ -2190,16 +2179,34 @@ function renderProgrammheft() {
         });
       });
 
-      const body = rows.length
+      const peopleBody = rows.length
         ? rows.join("")
         : `<div class="empty">Noch keine Beteiligten bei diesem Event eingetragen.</div>`;
 
       return `<details class="ph-event-group">
         <summary class="ph-event-header">${escapeHtml(ev.project)} <span class="contract-count">${rows.length}</span></summary>
-        <div class="ph-event-body">${body}</div>
+        <div class="ph-event-body">
+          <div class="ph-subsection-title">Programmtext</div>
+          <textarea class="programmtext-input" rows="5" placeholder="Programmtext für dieses Event…" data-row="${ev.rowIndex}">${escapeHtml(ev.programmtext || "")}</textarea>
+          <div class="programmtext-actions">
+            <span class="contract-status" id="pt-status-${ev.rowIndex}"></span>
+            <button type="button" class="btn primary pt-save-btn" data-row="${ev.rowIndex}">Text speichern</button>
+          </div>
+
+          <div class="ph-subsection-title ph-subsection-spaced">Beteiligte</div>
+          ${peopleBody}
+        </div>
       </details>`;
     })
     .join("");
+
+  container.querySelectorAll(".pt-save-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const rowIndex = parseInt(btn.dataset.row, 10);
+      const textarea = container.querySelector(`.programmtext-input[data-row="${rowIndex}"]`);
+      saveProgrammtext(rowIndex, textarea.value);
+    });
+  });
 
   container.querySelectorAll("[data-bio-row]").forEach((el) => {
     el.addEventListener("click", () => openBioModal(parseInt(el.dataset.bioRow, 10)));
@@ -2263,22 +2270,21 @@ async function copyProgrammheftLink(rowIndex) {
   }
 }
 
-async function saveProgrammtext() {
-  const textEl = document.getElementById("programmtext-input");
-  const statusEl = document.getElementById("programmtext-status");
-  if (!textEl) return;
-  const value = textEl.value;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmtextSheetRange("A2")}?valueInputOption=RAW`;
+async function saveProgrammtext(rowIndex, value) {
+  const statusEl = document.getElementById(`pt-status-${rowIndex}`);
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`R${rowIndex}`)}?valueInputOption=RAW`;
   try {
-    statusEl.textContent = "Wird gespeichert…";
+    if (statusEl) statusEl.textContent = "Wird gespeichert…";
     await apiFetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ values: [[value]] }),
     });
-    programmtext = value;
-    statusEl.textContent = "Gespeichert.";
+    ev.programmtext = value;
+    if (statusEl) statusEl.textContent = "Gespeichert.";
   } catch (e) {
-    statusEl.textContent = "Fehler beim Speichern: " + e.message;
+    if (statusEl) statusEl.textContent = "Fehler beim Speichern: " + e.message;
   }
 }
