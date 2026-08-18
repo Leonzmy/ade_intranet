@@ -93,6 +93,10 @@ window.addEventListener("DOMContentLoaded", () => {
   els.calViewWeek = document.getElementById("cal-view-week");
   els.calNewEventBtn = document.getElementById("cal-new-event-btn");
   els.newEventForm = document.getElementById("new-event-form");
+  els.riderModal = document.getElementById("rider-modal");
+  els.riderModalClose = document.getElementById("rider-modal-close");
+  els.riderDoneCheckbox = document.getElementById("rider-done-checkbox");
+  els.riderCsvBtn = document.getElementById("rider-csv-btn");
 
   bindClick(els.calPrev, () => shiftCalendar(-1));
   bindClick(els.calNext, () => shiftCalendar(1));
@@ -101,6 +105,14 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.calViewWeek, () => setCalView("week"));
   bindClick(els.calNewEventBtn, () => els.newEventForm && els.newEventForm.classList.toggle("hidden"));
   bindSubmit(els.newEventForm, handleNewEvent);
+  bindClick(els.riderModalClose, closeRiderModal);
+  bindClick(els.riderCsvBtn, downloadRiderCsv);
+  if (els.riderDoneCheckbox) els.riderDoneCheckbox.addEventListener("change", (e) => setRiderDone(e.target.checked));
+  if (els.riderModal) {
+    els.riderModal.addEventListener("click", (e) => {
+      if (e.target === els.riderModal) closeRiderModal();
+    });
+  }
 
   bindClick(els.loginBtn, handleLogin);
   bindClick(els.logoutBtn, handleLogout);
@@ -169,6 +181,7 @@ async function enterApp() {
   await loadTasks();
   await loadEvents();
   await loadInventory();
+  await syncRiderStatuses();
   await syncDeadlinesToCalendar();
   await loadCalendar();
   renderDashboard();
@@ -917,6 +930,112 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;");
 }
 
+// ---------- Rider-Status & Modal ----------
+
+function riderStatusFor(ev) {
+  const stored = ev.items.rider.status;
+  if (stored === "vorhanden") return "vorhanden";
+  const hasBookings = bookings.some((b) => b.project === ev.project);
+  return hasBookings ? "in arbeit" : "fehlt";
+}
+
+async function syncRiderStatuses() {
+  for (const ev of eventsData) {
+    const computed = riderStatusFor(ev);
+    if (computed === "in arbeit" && ev.items.rider.status === "fehlt") {
+      const riderDef = EVENT_ITEMS.find((d) => d.key === "rider");
+      try {
+        await apiFetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`${riderDef.statusCol}${ev.rowIndex}`)}?valueInputOption=RAW`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ values: [["in arbeit"]] }),
+          }
+        );
+        ev.items.rider.status = "in arbeit";
+      } catch (e) {
+        // still show computed state locally even if the write fails
+      }
+    }
+  }
+}
+
+let riderModalRowIndex = null;
+
+function openRiderModal(rowIndex) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  riderModalRowIndex = rowIndex;
+
+  document.getElementById("rider-modal-title").textContent = `Technical Rider — ${ev.project}`;
+
+  const projectBookings = bookings.filter((b) => b.project === ev.project);
+  const listEl = document.getElementById("rider-modal-list");
+  listEl.innerHTML = projectBookings.length
+    ? projectBookings
+        .map((b) => {
+          const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "—";
+          return `<div class="rider-list-row"><span>${escapeHtml(b.equipment)}</span><span class="qty">${b.qty}× · ${dateLabel}</span></div>`;
+        })
+        .join("")
+    : `<div class="empty">Noch nichts aus dem Inventar gebucht.</div>`;
+
+  document.getElementById("rider-done-checkbox").checked = ev.items.rider.status === "vorhanden";
+  document.getElementById("rider-modal").classList.remove("hidden");
+}
+
+function closeRiderModal() {
+  document.getElementById("rider-modal").classList.add("hidden");
+  riderModalRowIndex = null;
+}
+
+async function setRiderDone(done) {
+  if (!riderModalRowIndex) return;
+  const ev = eventsData.find((e) => e.rowIndex === riderModalRowIndex);
+  if (!ev) return;
+  const riderDef = EVENT_ITEMS.find((d) => d.key === "rider");
+  const newStatus = done ? "vorhanden" : bookings.some((b) => b.project === ev.project) ? "in arbeit" : "fehlt";
+  try {
+    await apiFetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`${riderDef.statusCol}${ev.rowIndex}`)}?valueInputOption=RAW`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[newStatus]] }),
+      }
+    );
+    ev.items.rider.status = newStatus;
+    renderEvents();
+  } catch (e) {
+    setStatus("Status konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+function downloadRiderCsv() {
+  if (!riderModalRowIndex) return;
+  const ev = eventsData.find((e) => e.rowIndex === riderModalRowIndex);
+  if (!ev) return;
+  const projectBookings = bookings.filter((b) => b.project === ev.project);
+
+  const csvEscape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [["Equipment", "Anzahl", "Datum", "Notiz"].map(csvEscape).join(";")];
+  projectBookings.forEach((b) => {
+    lines.push([b.equipment, b.qty, b.date, b.note].map(csvEscape).join(";"));
+  });
+  const csvContent = "\uFEFF" + lines.join("\r\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `technical-rider-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // ---------- Inventar ----------
 
 const NEED_PREFIX = "🔧 Technik: ";
@@ -1197,6 +1316,20 @@ function renderEvents() {
 
       const rows = EVENT_ITEMS.map((def) => {
         const item = ev.items[def.key];
+
+        if (def.key === "rider") {
+          const computed = riderStatusFor(ev);
+          const pillClass = computed === "vorhanden" ? "vorhanden" : computed === "in arbeit" ? "in-arbeit" : "fehlt";
+          const pillLabel = computed === "vorhanden" ? "Vorhanden" : computed === "in arbeit" ? "In Arbeit" : "Fehlt";
+          return `<div class="checklist-row">
+            <div class="checklist-label">${escapeHtml(def.label)}</div>
+            <button type="button" class="status-pill ${pillClass}" data-row="${ev.rowIndex}" data-open-rider="1">
+              ${pillLabel}
+            </button>
+            <span class="checklist-link" style="border:none;background:none;color:var(--text-muted);">Klicken für gebuchte Liste</span>
+          </div>`;
+        }
+
         const isDone = item.status === "vorhanden";
         return `<div class="checklist-row">
           <div class="checklist-label">${escapeHtml(def.label)}</div>
@@ -1225,7 +1358,11 @@ function renderEvents() {
     })
     .join("");
 
-  container.querySelectorAll(".status-pill").forEach((btn) => {
+  container.querySelectorAll(".status-pill[data-open-rider]").forEach((btn) => {
+    btn.addEventListener("click", () => openRiderModal(parseInt(btn.dataset.row, 10)));
+  });
+
+  container.querySelectorAll(".status-pill:not([data-open-rider])").forEach((btn) => {
     btn.addEventListener("click", () => {
       const rowIndex = parseInt(btn.dataset.row, 10);
       toggleEventStatus(rowIndex, btn.dataset.statuscol, btn.dataset.key);
