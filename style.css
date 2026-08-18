@@ -582,6 +582,76 @@ main {
 
 .status-pill.vorhanden { background: #e6f4ea; color: #1a7a3c; }
 .status-pill.fehlt { background: var(--danger-bg); color: var(--danger); }
+.status-pill.in-arbeit { background: var(--warning-bg); color: var(--warning); }
+
+/* ---------- Rider-Modal ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--surface);
+  border-radius: var(--radius);
+  width: 480px;
+  max-width: 92vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+
+.modal-body {
+  padding: 14px 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+
+.rider-done-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.rider-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.rider-list-row:last-child { border-bottom: none; }
+.rider-list-row .qty { font-family: var(--font-mono); color: var(--text-secondary); }
 
 .checklist-link {
   flex: 1;
