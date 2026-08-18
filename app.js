@@ -974,7 +974,7 @@ function contactsSheetRange(a1) {
 
 async function loadContacts() {
   try {
-    const range = contactsSheetRange("A2:G300");
+    const range = contactsSheetRange("A2:K300");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     contactsData = (data.values || [])
@@ -985,13 +985,23 @@ async function loadContacts() {
         role: r[1] || "",
         events: r[2] || "",
         email: r[3] || "",
-        address: r[4] || "",
-        phone: r[5] || "",
-        token: r[6] || "",
+        street: r[4] || "",
+        houseNumber: r[5] || "",
+        zip: r[6] || "",
+        city: r[7] || "",
+        country: r[8] || "",
+        phone: r[9] || "",
+        token: r[10] || "",
       }));
   } catch (e) {
     setStatus("Kontakte konnten nicht geladen werden: " + e.message, true);
   }
+}
+
+function formatAddress(c) {
+  const line1 = [c.street, c.houseNumber].filter(Boolean).join(" ");
+  const line2 = [c.zip, c.city].filter(Boolean).join(" ");
+  return [line1, line2, c.country].filter(Boolean).join(", ") || "—";
 }
 
 function genToken() {
@@ -1029,12 +1039,15 @@ async function syncContacts() {
         const resp = await apiFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", token]] }),
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", "", "", "", "", token]] }),
         });
         const updatedRange = resp?.updates?.updatedRange || "";
         const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
         const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
-        contactsData.push({ rowIndex: newRowIndex, name, role: roleStr, events: eventsStr, email: "", address: "", phone: "", token });
+        contactsData.push({
+          rowIndex: newRowIndex, name, role: roleStr, events: eventsStr,
+          email: "", street: "", houseNumber: "", zip: "", city: "", country: "", phone: "", token,
+        });
       } catch (e) {
         // weiter mit den übrigen Namen, auch wenn einer fehlschlägt
       }
@@ -1083,9 +1096,9 @@ function renderContacts() {
       (c) => `<div class="inv-row contact-row">
         <div class="contact-name">${escapeHtml(c.name)}<div class="inv-cat">${escapeHtml(c.events)}</div></div>
         <div class="contact-role">${escapeHtml(c.role)}</div>
-        <input type="email" class="contact-input" placeholder="E-Mail" value="${escapeHtml(c.email)}" data-row="${c.rowIndex}" data-field="email" />
-        <input type="text" class="contact-input" placeholder="Adresse" value="${escapeHtml(c.address)}" data-row="${c.rowIndex}" data-field="address" />
-        <input type="text" class="contact-input contact-field-sm" placeholder="Telefon" value="${escapeHtml(c.phone)}" data-row="${c.rowIndex}" data-field="phone" />
+        <div class="contact-static">${c.email ? escapeHtml(c.email) : "—"}</div>
+        <div class="contact-static">${escapeHtml(formatAddress(c))}</div>
+        <div class="contact-static">${c.phone ? escapeHtml(c.phone) : "—"}</div>
         <button type="button" class="contact-link-btn" data-row="${c.rowIndex}" title="Formular-Link kopieren"><i class="ti ti-link"></i></button>
       </div>`
     )
@@ -1096,33 +1109,6 @@ function renderContacts() {
   container.querySelectorAll(".contact-link-btn").forEach((btn) => {
     btn.addEventListener("click", () => copyContactLink(parseInt(btn.dataset.row, 10)));
   });
-
-  container.querySelectorAll(".contact-input").forEach((input) => {
-    input.addEventListener("change", () => {
-      const rowIndex = parseInt(input.dataset.row, 10);
-      updateContactField(rowIndex, input.dataset.field, input.value.trim());
-    });
-  });
-}
-
-async function updateContactField(rowIndex, field, value) {
-  const colMap = { email: "D", address: "E", phone: "F" };
-  const col = colMap[field];
-  const c = contactsData.find((x) => x.rowIndex === rowIndex);
-  if (!c || !col) return;
-  const range = contactsSheetRange(`${col}${rowIndex}`);
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
-  try {
-    await apiFetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ values: [[value]] }),
-    });
-    c[field] = value;
-    setStatus("Gespeichert.");
-  } catch (e) {
-    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
-  }
 }
 
 async function copyContactLink(rowIndex) {
@@ -1131,7 +1117,7 @@ async function copyContactLink(rowIndex) {
 
   if (!c.token) {
     const newToken = genToken();
-    const range = contactsSheetRange(`G${rowIndex}`);
+    const range = contactsSheetRange(`K${rowIndex}`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
     try {
       await apiFetch(url, {
