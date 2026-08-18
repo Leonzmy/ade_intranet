@@ -633,15 +633,9 @@ main {
 .contact-name { font-size: 13.5px; font-weight: 500; }
 .contact-role { font-size: 12.5px; color: var(--text-secondary); }
 
-.contact-input {
-  font-family: var(--font);
+.contact-static {
   font-size: 13px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
   color: var(--text);
-  width: 100%;
 }
 
 .contact-link-btn {
