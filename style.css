@@ -254,7 +254,7 @@ details summary {
   margin-bottom: 1.5rem;
 }
 
-.new-task-form input, .new-task-form select {
+.new-task-form input, .new-task-form select, .new-task-form textarea {
   font-family: var(--font);
   font-size: 14px;
   padding: 8px 10px;
@@ -262,6 +262,11 @@ details summary {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
+}
+
+.new-task-form textarea {
+  resize: vertical;
+  min-height: 44px;
 }
 
 .new-task-form .row { display: flex; gap: 8px; }
