@@ -24,7 +24,11 @@ const CONFIG = {
 
    // Name des Tabellenblatts für Kontakte (Ensemble/Interpret:innen/Komponist:innen)
   CONTACTS_SHEET_NAME: "Kontakte",
-  
+
+    // URL, unter der kontakt-formular.html erreichbar ist (z.B. auf GitHub
+  // Pages neben index.html), OHNE Fragezeichen/Parameter am Ende
+  PUBLIC_FORM_URL: "https://leonzmy.github.io/ade_intranet/kontakt-formular.html",
+   
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
   // Für einen gemeinsamen Festival-Kalender: die Kalender-ID aus den
