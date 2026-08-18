@@ -1170,6 +1170,23 @@ function riderStatusFor(ev) {
   return hasBookings ? "in arbeit" : "fehlt";
 }
 
+function contractsStatusFor(ev) {
+  const pairs = [];
+  (ev.ensemble || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => pairs.push({ name, role: "Ensemble" }));
+  (ev.interpreten || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => pairs.push({ name, role: "Interpret:in" }));
+  (ev.komponisten || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => pairs.push({ name, role: "Komponist:in" }));
+
+  if (pairs.length === 0) return { status: "fehlt", done: 0, total: 0 };
+
+  const done = pairs.filter((p) =>
+    contractDetails.some((c) => c.name === p.name && c.event === ev.project && c.role === p.role)
+  ).length;
+
+  if (done === 0) return { status: "fehlt", done, total: pairs.length };
+  if (done === pairs.length) return { status: "vorhanden", done, total: pairs.length };
+  return { status: "in arbeit", done, total: pairs.length };
+}
+
 async function syncRiderStatuses() {
   for (const ev of eventsData) {
     const computed = riderStatusFor(ev);
@@ -1568,8 +1585,6 @@ const EVENT_ITEMS = [
   { key: "rider", label: "Technical Rider", statusCol: "E", linkCol: "F" },
   { key: "bilder", label: "Bilder", statusCol: "G", linkCol: "H" },
   { key: "texte", label: "Texte (Ensemble & Komponist:in)", statusCol: "I", linkCol: "J" },
-  { key: "vertragKomponist", label: "Vertrag Komponist:in", statusCol: "K", linkCol: "L" },
-  { key: "vertragEnsemble", label: "Vertrag Ensemble", statusCol: "M", linkCol: "N" },
 ];
 
 let eventsData = []; // [{rowIndex, project, items: {key: {status, link}}}]
@@ -1623,8 +1638,10 @@ function renderEvents() {
   container.innerHTML = eventsData
     .map((ev, idx) => {
       const colorClass = `color-${idx % 5}`;
-      const doneCount = EVENT_ITEMS.filter((def) => ev.items[def.key].status === "vorhanden").length;
-      const complete = doneCount === EVENT_ITEMS.length;
+      const contractsInfo = contractsStatusFor(ev);
+      const doneCount = EVENT_ITEMS.filter((def) => ev.items[def.key].status === "vorhanden").length + (contractsInfo.status === "vorhanden" ? 1 : 0);
+      const totalCount = EVENT_ITEMS.length + 1;
+      const complete = doneCount === totalCount;
 
       const rows = EVENT_ITEMS.map((def) => {
         const item = ev.items[def.key];
@@ -1654,10 +1671,18 @@ function renderEvents() {
         </div>`;
       }).join("");
 
+      const contractsPillClass = contractsInfo.status === "vorhanden" ? "vorhanden" : contractsInfo.status === "in arbeit" ? "in-arbeit" : "fehlt";
+      const contractsPillLabel = contractsInfo.status === "vorhanden" ? "Fertig" : contractsInfo.status === "in arbeit" ? "In Arbeit" : "Fehlt";
+      const contractsRow = `<div class="checklist-row">
+        <div class="checklist-label checklist-label-link" data-open-contracts="1">Verträge</div>
+        <span class="status-pill ${contractsPillClass} static">${contractsPillLabel}</span>
+        <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${contractsInfo.done}/${contractsInfo.total}</span>
+      </div>`;
+
       return `<div class="event-card ${colorClass}">
         <div class="event-card-header">
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
-          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${EVENT_ITEMS.length} vorhanden</div>
+          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} vorhanden</div>
         </div>
         <div class="event-date-row">
           <i class="ti ti-calendar-event"></i>
@@ -1681,6 +1706,7 @@ function renderEvents() {
           </div>
         </div>
         ${rows}
+        ${contractsRow}
       </div>`;
     })
     .join("");
@@ -1694,6 +1720,10 @@ function renderEvents() {
 
   container.querySelectorAll(".checklist-label-link[data-open-rider]").forEach((el) => {
     el.addEventListener("click", () => openRiderModal(parseInt(el.dataset.row, 10)));
+  });
+
+  container.querySelectorAll(".checklist-label-link[data-open-contracts]").forEach((el) => {
+    el.addEventListener("click", () => switchView("contracts"));
   });
 
   container.querySelectorAll(".rider-download").forEach((btn) => {
