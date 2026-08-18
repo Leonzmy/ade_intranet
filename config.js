@@ -31,7 +31,13 @@ const CONFIG = {
 
     // Dieselbe Apps-Script-Web-App-URL wie in kontakt-formular.html (WEBAPP_URL)
   WEBAPP_URL: "https://script.google.com/macros/s/AKfycbzYq3uojflMADX03NrX3e4_4DeB5c48o1mXHzGwSiGv88g0vuJ_bhrySTm_nkqNZ5UlLQ/exec",
- 
+
+    // Feste Vertragsvorlagen (nicht im Frontend änderbar)
+  CONTRACT_TEMPLATES: {
+    "Ensemble": "https://docs.google.com/document/d/1Cbh_-Mp9tjHaa6z7RK-F2Q223C-Tc-KL-LHNDJBbOEo/edit",
+    "Interpret:in": "https://docs.google.com/document/d/1OCpiXZPOMeM4-ZmBP89Oc4j-8NL6o8kKQWv557d82Dw/edit",
+    "Komponist:in": "https://docs.google.com/document/d/1F_C8Xs1CQQhqF4z1-sdDGLNw3H4kMJ8tLtnDy7mL1QM/edit",
+  },
    
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
