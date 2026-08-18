@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Festival Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <div id="login-screen">
+    <h1>Festival Dashboard</h1>
+    <p>Aufgaben, Kalender und mehr an einem Ort — direkt über dein Google-Konto.</p>
+    <button id="login-btn" class="btn primary">Mit Google anmelden</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="topbar">
+      <div>
+        <h1>Festival Dashboard</h1>
+        <div class="subtitle" id="user-label"></div>
+      </div>
+      <button id="logout-btn" class="btn">Abmelden</button>
+    </div>
+
+    <div class="tabs">
+      <button id="tab-tasks" class="active">Aufgaben</button>
+      <button id="tab-calendar">Kalender</button>
+    </div>
+
+    <main>
+      <div class="status-msg" id="status-msg"></div>
+
+      <div id="view-tasks">
+        <div class="filter-row">
+          <div class="filters">
+            <button id="filter-mine" class="active">Nur meine</button>
+            <button id="filter-all">Ganzes Team</button>
+          </div>
+        </div>
+
+        <form id="new-task-form" class="new-task-form">
+          <div class="row">
+            <input type="text" name="title" placeholder="Neue Aufgabe" required />
+            <input type="text" name="project" placeholder="Projekt" />
+          </div>
+          <div class="row">
+            <input type="text" name="assigneeName" placeholder="Kürzel (z.B. LZ)" />
+            <input type="email" name="assigneeEmail" placeholder="E-Mail der zuständigen Person" />
+            <input type="date" name="due" required />
+          </div>
+          <button type="submit" class="btn primary">Aufgabe hinzufügen</button>
+        </form>
+
+        <div id="sections"></div>
+      </div>
+
+      <div id="view-calendar" class="hidden">
+        <div id="calendar-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
