@@ -28,6 +28,10 @@ const CONFIG = {
     // URL, unter der kontakt-formular.html erreichbar ist (z.B. auf GitHub
   // Pages neben index.html), OHNE Fragezeichen/Parameter am Ende
   PUBLIC_FORM_URL: "https://leonzmy.github.io/ade_intranet/kontakt-formular.html",
+
+    // Dieselbe Apps-Script-Web-App-URL wie in kontakt-formular.html (WEBAPP_URL)
+  WEBAPP_URL: "https://script.google.com/macros/s/AKfycbzYq3uojflMADX03NrX3e4_4DeB5c48o1mXHzGwSiGv88g0vuJ_bhrySTm_nkqNZ5UlLQ/exec",
+ 
    
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
