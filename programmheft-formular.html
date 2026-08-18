@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kurzbio & Foto einreichen</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --border: #e5e5e7;
+      --text: #1a1a1a;
+      --text-secondary: #68686c;
+      --text-muted: #9a9a9e;
+      --accent: #d6293e;
+      --accent-text: #ffffff;
+      --radius: 10px;
+      --font: "IBM Plex Sans", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 26px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p { color: var(--text-secondary); font-size: 14px; margin: 0 0 20px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; margin-top: 16px; }
+    textarea, input[type="file"] {
+      width: 100%;
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #f6f6f7;
+    }
+    textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+    .counter { font-size: 12px; color: var(--text-muted); margin-top: 4px; text-align: right; }
+    .counter.over { color: var(--accent); font-weight: 600; }
+    .current-photo { margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+    .current-photo a { color: var(--accent); }
+    button {
+      margin-top: 24px;
+      width: 100%;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: var(--accent-text);
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .status { margin-top: 14px; font-size: 13px; }
+    .status.error { color: var(--accent); }
+    .status.success { color: #1a7a3c; }
+    .hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="invalid-state" class="hidden">
+      <h1>Link ungültig</h1>
+      <p>Dieser Link ist nicht mehr gültig oder wurde falsch kopiert. Bitte wende dich an die Person, die ihn dir geschickt hat.</p>
+    </div>
+
+    <div id="form-state" class="hidden">
+      <h1>Programmheft</h1>
+      <p id="greeting">Kurzbio und Foto fürs Programmheft.</p>
+      <form id="ph-form">
+        <label for="bio">Kurzbio</label>
+        <textarea id="bio" name="bio"></textarea>
+        <div class="counter" id="counter"></div>
+
+        <label for="photo">Foto</label>
+        <input type="file" id="photo" name="photo" accept="image/*" />
+        <div class="hint">JPG oder PNG, maximal 5 MB.</div>
+        <div class="current-photo hidden" id="current-photo"></div>
+
+        <button type="submit" id="submit-btn">Speichern</button>
+      </form>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="loading-state">
+      <p>Lädt…</p>
+    </div>
+  </div>
+
+  <script>
+    // Dieselbe Web-App-URL wie in kontakt-formular.html
+    const WEBAPP_URL = "TRAGE_HIER_DEINE_WEB_APP_URL_EIN";
+
+    const params = new URLSearchParams(location.search);
+    const row = params.get("row");
+    const token = params.get("token");
+
+    const loadingEl = document.getElementById("loading-state");
+    const invalidEl = document.getElementById("invalid-state");
+    const formEl = document.getElementById("form-state");
+    const statusEl = document.getElementById("status");
+    const bioEl = document.getElementById("bio");
+    const counterEl = document.getElementById("counter");
+    let bioMax = 800;
+
+    function showInvalid() {
+      loadingEl.classList.add("hidden");
+      invalidEl.classList.remove("hidden");
+    }
+
+    function updateCounter() {
+      const len = bioEl.value.length;
+      counterEl.textContent = `${len} / ${bioMax} Zeichen`;
+      counterEl.className = len > bioMax ? "counter over" : "counter";
+    }
+
+    bioEl.addEventListener("input", updateCounter);
+
+    async function init() {
+      if (!row || !token || WEBAPP_URL.startsWith("TRAGE_HIER")) {
+        showInvalid();
+        return;
+      }
+      try {
+        const res = await fetch(`${WEBAPP_URL}?type=programmheft&row=${encodeURIComponent(row)}&token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!data.valid) {
+          showInvalid();
+          return;
+        }
+        bioMax = data.bioMaxChars || 800;
+        bioEl.setAttribute("maxlength", String(bioMax));
+        document.getElementById("greeting").textContent =
+          `Hallo ${data.name}, bitte Kurzbio und Foto für ${data.events || "das Festival"} einreichen:`;
+        bioEl.value = data.bio || "";
+        updateCounter();
+
+        if (data.photoUrl) {
+          const cp = document.getElementById("current-photo");
+          cp.classList.remove("hidden");
+          cp.innerHTML = `Bereits hochgeladen: <a href="${data.photoUrl}" target="_blank" rel="noopener">aktuelles Foto ansehen</a>. Neues Foto ersetzt das alte.`;
+        }
+
+        loadingEl.classList.add("hidden");
+        formEl.classList.remove("hidden");
+      } catch (err) {
+        showInvalid();
+      }
+    }
+    init();
+
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById("ph-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submit-btn");
+      const fileInput = document.getElementById("photo");
+      statusEl.textContent = "";
+      statusEl.className = "status";
+
+      if (bioEl.value.length > bioMax) {
+        statusEl.textContent = `Die Kurzbio ist zu lang (maximal ${bioMax} Zeichen).`;
+        statusEl.className = "status error";
+        return;
+      }
+
+      const payload = { action: "saveProgrammheft", row, token, bio: bioEl.value.trim() };
+
+      const file = fileInput.files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          statusEl.textContent = "Das Bild ist zu groß (maximal 5 MB).";
+          statusEl.className = "status error";
+          return;
+        }
+        try {
+          payload.photoData = await readFileAsDataUrl(file);
+          payload.photoName = file.name;
+          payload.photoMime = file.type || "image/jpeg";
+        } catch (err) {
+          statusEl.textContent = "Bild konnte nicht gelesen werden.";
+          statusEl.className = "status error";
+          return;
+        }
+      }
+
+      btn.disabled = true;
+      statusEl.textContent = "Wird gespeichert…";
+
+      try {
+        const res = await fetch(WEBAPP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusEl.textContent = "Gespeichert — vielen Dank!";
+          statusEl.className = "status success";
+          fileInput.value = "";
+        } else {
+          statusEl.textContent = data.error || "Fehler beim Speichern.";
+          statusEl.className = "status error";
+        }
+      } catch (err) {
+        statusEl.textContent = "Fehler beim Speichern. Bitte später erneut versuchen.";
+        statusEl.className = "status error";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
