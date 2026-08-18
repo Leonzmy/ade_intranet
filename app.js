@@ -1197,6 +1197,30 @@ function contractsStatusFor(ev) {
   return { status: "in arbeit", done, total: pairs.length };
 }
 
+// Alle Personen eines Events (über alle drei Rollen hinweg, ohne Dubletten)
+function peopleOfEvent(ev) {
+  const names = new Set();
+  PEOPLE_ROLES.forEach((r) => {
+    (ev[r.key] || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((n) => names.add(n));
+  });
+  return Array.from(names);
+}
+
+// Status für Bilder (Fotos) bzw. Texte (Bios) aus den Programmheft-Daten
+function programmheftStatusFor(ev, field) {
+  const names = peopleOfEvent(ev);
+  if (names.length === 0) return { status: "fehlt", done: 0, total: 0 };
+
+  const done = names.filter((name) => {
+    const entry = programmheftData.find((p) => p.name === name);
+    return entry && entry[field];
+  }).length;
+
+  if (done === 0) return { status: "fehlt", done, total: names.length };
+  if (done === names.length) return { status: "vorhanden", done, total: names.length };
+  return { status: "in arbeit", done, total: names.length };
+}
+
 async function syncRiderStatuses() {
   for (const ev of eventsData) {
     const computed = riderStatusFor(ev);
@@ -1650,7 +1674,16 @@ function renderEvents() {
     .map((ev, idx) => {
       const colorClass = `color-${idx % 5}`;
       const contractsInfo = contractsStatusFor(ev);
-      const doneCount = EVENT_ITEMS.filter((def) => ev.items[def.key].status === "vorhanden").length + (contractsInfo.status === "vorhanden" ? 1 : 0);
+      const bilderInfo = programmheftStatusFor(ev, "photoUrl");
+      const texteInfo = programmheftStatusFor(ev, "bio");
+      const manualDone = EVENT_ITEMS
+        .filter((def) => def.key !== "rider" && def.key !== "bilder" && def.key !== "texte")
+        .filter((def) => ev.items[def.key].status === "vorhanden").length;
+      const doneCount = manualDone
+        + (riderStatusFor(ev) === "vorhanden" ? 1 : 0)
+        + (bilderInfo.status === "vorhanden" ? 1 : 0)
+        + (texteInfo.status === "vorhanden" ? 1 : 0)
+        + (contractsInfo.status === "vorhanden" ? 1 : 0);
       const totalCount = EVENT_ITEMS.length + 1;
       const complete = doneCount === totalCount;
 
@@ -1665,6 +1698,19 @@ function renderEvents() {
             <div class="checklist-label checklist-label-link" data-row="${ev.rowIndex}" data-open-rider="1">${escapeHtml(def.label)}</div>
             <span class="status-pill ${pillClass} static">${pillLabel}</span>
             <button type="button" class="checklist-link-open rider-download" data-row="${ev.rowIndex}" title="CSV herunterladen"><i class="ti ti-download"></i></button>
+          </div>`;
+        }
+
+        if (def.key === "bilder" || def.key === "texte") {
+          const field = def.key === "bilder" ? "photoUrl" : "bio";
+          const info = programmheftStatusFor(ev, field);
+          const pillClass = info.status === "vorhanden" ? "vorhanden" : info.status === "in arbeit" ? "in-arbeit" : "fehlt";
+          const pillLabel = info.status === "vorhanden" ? "Fertig" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
+          const label = def.key === "bilder" ? "Bilder" : "Texte";
+          return `<div class="checklist-row">
+            <div class="checklist-label checklist-label-link" data-open-programmheft="1">${escapeHtml(label)}</div>
+            <span class="status-pill ${pillClass} static">${pillLabel}</span>
+            <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${info.done}/${info.total}</span>
           </div>`;
         }
 
@@ -1735,6 +1781,10 @@ function renderEvents() {
 
   container.querySelectorAll(".checklist-label-link[data-open-contracts]").forEach((el) => {
     el.addEventListener("click", () => switchView("contracts"));
+  });
+
+  container.querySelectorAll(".checklist-label-link[data-open-programmheft]").forEach((el) => {
+    el.addEventListener("click", () => switchView("programmheft"));
   });
 
   container.querySelectorAll(".rider-download").forEach((btn) => {
