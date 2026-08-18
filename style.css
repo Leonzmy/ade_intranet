@@ -372,6 +372,53 @@ main {
   margin: -6px 0 12px;
 }
 
+.inv-category {
+  margin-bottom: 14px;
+}
+
+.inv-category summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inv-category summary::-webkit-details-marker { display: none; }
+
+.inv-category summary::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.inv-category[open] summary::before { transform: rotate(90deg); }
+
+.inv-category[open] summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.inv-category-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.inv-category .inv-table {
+  margin-bottom: 0;
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .inv-table {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -569,6 +616,15 @@ main {
   line-height: 1.25;
 }
 
+.checklist-label-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--text);
+}
+
+.checklist-label-link:hover { color: var(--accent); }
+
 .status-pill {
   font-size: 11px;
   font-weight: 600;
@@ -579,6 +635,8 @@ main {
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+.status-pill.static { cursor: default; flex: 1; }
 
 .status-pill.vorhanden { background: #e6f4ea; color: #1a7a3c; }
 .status-pill.fehlt { background: var(--danger-bg); color: var(--danger); }
@@ -645,10 +703,25 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
+
+.rider-list-row span:first-child { flex: 1; min-width: 0; }
+
+.rider-delete-booking {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 2px;
+  font-size: 14px;
+}
+
+.rider-delete-booking:hover { color: var(--danger); }
 
 .rider-list-row:last-child { border-bottom: none; }
 .rider-list-row .qty { font-family: var(--font-mono); color: var(--text-secondary); }
