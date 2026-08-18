@@ -279,7 +279,6 @@ async function loadTasks() {
     const data = await apiFetch(url);
     const rows = data.values || [];
     tasks = rows
-      .filter((r) => r[1])
       .map((r, i) => ({
         rowIndex: i + 2,
         id: r[0] || "",
@@ -292,7 +291,8 @@ async function loadTasks() {
         due: r[7] || "",
         status: (r[8] || "offen").trim().toLowerCase(),
         notesRaw: r[9] || "",
-      }));
+      }))
+      .filter((t) => t.title);
     renderTasks();
   } catch (e) {
     setStatus("Konnte Aufgaben nicht laden: " + e.message, true);
@@ -985,7 +985,6 @@ async function loadContacts() {
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     contactsData = (data.values || [])
-      .filter((r) => r[0])
       .map((r, i) => ({
         rowIndex: i + 2,
         name: r[0],
@@ -999,7 +998,8 @@ async function loadContacts() {
         country: r[8] || "",
         phone: r[9] || "",
         token: r[10] || "",
-      }));
+      }))
+      .filter((c) => c.name);
   } catch (e) {
     setStatus("Kontakte konnten nicht geladen werden: " + e.message, true);
   }
@@ -1309,8 +1309,8 @@ async function loadInventory() {
       .map((r) => ({ name: r[0], category: r[1] || "", stock: parseFloat(r[2]) || 0, note: r[3] || "" }));
 
     bookings = (bkData.values || [])
-      .filter((r) => r[0])
-      .map((r, i) => ({ rowIndex: i + 2, equipment: r[0], project: r[1] || "", date: r[2] || "", qty: parseFloat(r[3]) || 0, note: r[4] || "" }));
+      .map((r, i) => ({ rowIndex: i + 2, equipment: r[0], project: r[1] || "", date: r[2] || "", qty: parseFloat(r[3]) || 0, note: r[4] || "" }))
+      .filter((b) => b.equipment);
   } catch (e) {
     setStatus("Inventar konnte nicht geladen werden: " + e.message, true);
   }
@@ -1566,7 +1566,6 @@ async function loadEvents() {
     const data = await apiFetch(url);
     const rows = data.values || [];
     eventsData = rows
-      .filter((r) => r[0])
       .map((r, i) => {
         const items = {};
         EVENT_ITEMS.forEach((def, idx) => {
@@ -1586,7 +1585,8 @@ async function loadEvents() {
           interpreten: r[15] || "",
           komponisten: r[16] || "",
         };
-      });
+      })
+      .filter((ev) => ev.project);
   } catch (e) {
     setStatus("Events konnten nicht geladen werden: " + e.message, true);
   }
