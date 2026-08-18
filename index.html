@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -167,11 +167,14 @@
       </div>
 
       <div id="view-contracts" class="view hidden">
-        <div class="placeholder-view">
-          <i class="ti ti-file-text"></i>
-          <h2>Verträge</h2>
-          <p>Dieser Bereich ist in Vorbereitung.</p>
-        </div>
+        <h2 class="view-title">Verträge</h2>
+
+        <div class="inv-section-title">Vorlagen</div>
+        <div id="templates-list" class="inv-table"></div>
+
+        <div class="inv-section-title inv-section-spaced">Personen</div>
+        <p class="inv-hint">Sortiert nach Funktion → Event → Name. Person anklicken, um einen Vertrag zu erstellen.</p>
+        <div id="contracts-browser"></div>
       </div>
 
       <div id="view-contacts" class="view hidden">
@@ -201,9 +204,27 @@
         </div>
       </div>
     </div>
+
+    <div id="contract-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="contract-modal-title">Vertrag erstellen</div>
+          <button type="button" id="contract-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div id="contract-contact-info" class="contract-contact-info"></div>
+          <div id="contract-fields"></div>
+          <div id="contract-result" class="contract-result hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <span id="contract-status" class="contract-status"></span>
+          <button type="button" id="contract-generate-btn" class="btn primary">Vertrag erstellen</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
