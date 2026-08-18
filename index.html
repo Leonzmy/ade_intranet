@@ -139,11 +139,31 @@
       </div>
 
       <div id="view-inventory" class="view hidden">
-        <div class="placeholder-view">
-          <i class="ti ti-package"></i>
-          <h2>Inventar</h2>
-          <p>Dieser Bereich ist in Vorbereitung.</p>
-        </div>
+        <h2 class="view-title">Inventar</h2>
+
+        <div class="inv-section-title">Schwere Reiter — Technik-Katalog</div>
+        <div id="inventory-list" class="inv-table"></div>
+
+        <div class="inv-section-title inv-section-spaced">Zusätzlicher Bedarf</div>
+        <p class="inv-hint">Wird automatisch als Aufgabe im Aufgaben-Reiter angelegt.</p>
+
+        <form id="new-need-form" class="new-task-form">
+          <div class="row">
+            <input type="text" name="title" placeholder="Was wird gebraucht?" required />
+            <select name="project" id="need-project-select">
+              <option value="">Event wählen…</option>
+            </select>
+          </div>
+          <div class="row">
+            <select name="assigneeName" id="need-assignee-select">
+              <option value="">Wer kümmert sich?</option>
+            </select>
+            <input type="date" name="due" required />
+          </div>
+          <button type="submit" class="btn primary">Bedarf anlegen</button>
+        </form>
+
+        <div id="needs-list"></div>
       </div>
 
       <div id="view-contracts" class="view hidden">
