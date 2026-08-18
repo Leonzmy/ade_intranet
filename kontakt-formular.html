@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kontaktdaten eintragen</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --border: #e5e5e7;
+      --text: #1a1a1a;
+      --text-secondary: #68686c;
+      --accent: #d6293e;
+      --accent-text: #ffffff;
+      --radius: 10px;
+      --font: "IBM Plex Sans", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 26px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    p { color: var(--text-secondary); font-size: 14px; margin: 0 0 20px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; margin-top: 14px; }
+    input {
+      width: 100%;
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #f6f6f7;
+    }
+    button {
+      margin-top: 22px;
+      width: 100%;
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: var(--accent-text);
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .status { margin-top: 14px; font-size: 13px; }
+    .status.error { color: var(--accent); }
+    .status.success { color: #1a7a3c; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="invalid-state" class="hidden">
+      <h1>Link ungültig</h1>
+      <p>Dieser Link ist nicht mehr gültig oder wurde falsch kopiert. Bitte wende dich an die Person, die ihn dir geschickt hat.</p>
+    </div>
+
+    <div id="form-state" class="hidden">
+      <h1>Kontaktdaten</h1>
+      <p id="greeting">Trag hier deine Kontaktdaten ein.</p>
+      <form id="contact-form">
+        <label for="email">E-Mail</label>
+        <input type="email" id="email" name="email" />
+        <label for="address">Adresse</label>
+        <input type="text" id="address" name="address" />
+        <label for="phone">Telefon</label>
+        <input type="text" id="phone" name="phone" />
+        <button type="submit" id="submit-btn">Speichern</button>
+      </form>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="loading-state">
+      <p>Lädt…</p>
+    </div>
+  </div>
+
+  <script>
+    // Hier die Web-App-URL aus dem Apps-Script-Deployment eintragen
+    // (siehe webapp-backend.gs, Schritt 6 der Anleitung dort)
+    const WEBAPP_URL = "TRAGE_HIER_DEINE_WEB_APP_URL_EIN";
+
+    const params = new URLSearchParams(location.search);
+    const row = params.get("row");
+    const token = params.get("token");
+
+    const loadingEl = document.getElementById("loading-state");
+    const invalidEl = document.getElementById("invalid-state");
+    const formEl = document.getElementById("form-state");
+    const statusEl = document.getElementById("status");
+
+    function showInvalid() {
+      loadingEl.classList.add("hidden");
+      invalidEl.classList.remove("hidden");
+    }
+
+    async function init() {
+      if (!row || !token || WEBAPP_URL.startsWith("TRAGE_HIER")) {
+        showInvalid();
+        return;
+      }
+      try {
+        const res = await fetch(`${WEBAPP_URL}?row=${encodeURIComponent(row)}&token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!data.valid) {
+          showInvalid();
+          return;
+        }
+        document.getElementById("greeting").textContent = `Hallo ${data.name}, trag hier deine Kontaktdaten ein:`;
+        document.getElementById("email").value = data.email || "";
+        document.getElementById("address").value = data.address || "";
+        document.getElementById("phone").value = data.phone || "";
+        loadingEl.classList.add("hidden");
+        formEl.classList.remove("hidden");
+      } catch (err) {
+        showInvalid();
+      }
+    }
+    init();
+
+    document.getElementById("contact-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("submit-btn");
+      btn.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "status";
+
+      const payload = {
+        row,
+        token,
+        email: document.getElementById("email").value.trim(),
+        address: document.getElementById("address").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+      };
+
+      try {
+        // Content-Type bewusst text/plain, damit der Browser keine CORS-
+        // Preflight-Anfrage schickt — Apps-Script-Web-Apps können damit
+        // nicht umgehen. Der Inhalt ist trotzdem normales JSON.
+        const res = await fetch(WEBAPP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          statusEl.textContent = "Gespeichert — vielen Dank!";
+          statusEl.className = "status success";
+        } else {
+          statusEl.textContent = data.error || "Fehler beim Speichern.";
+          statusEl.className = "status error";
+        }
+      } catch (err) {
+        statusEl.textContent = "Fehler beim Speichern. Bitte später erneut versuchen.";
+        statusEl.className = "status error";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
