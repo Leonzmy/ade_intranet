@@ -976,10 +976,18 @@ function openRiderModal(rowIndex) {
     ? projectBookings
         .map((b) => {
           const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "—";
-          return `<div class="rider-list-row"><span>${escapeHtml(b.equipment)}</span><span class="qty">${b.qty}× · ${dateLabel}</span></div>`;
+          return `<div class="rider-list-row">
+            <span>${escapeHtml(b.equipment)}</span>
+            <span class="qty">${b.qty}× · ${dateLabel}</span>
+            <button type="button" class="rider-delete-booking" data-booking-row="${b.rowIndex}" title="Buchung entfernen"><i class="ti ti-trash"></i></button>
+          </div>`;
         })
         .join("")
     : `<div class="empty">Noch nichts aus dem Inventar gebucht.</div>`;
+
+  listEl.querySelectorAll(".rider-delete-booking").forEach((btn) => {
+    btn.addEventListener("click", () => deleteBooking(parseInt(btn.dataset.bookingRow, 10)));
+  });
 
   document.getElementById("rider-done-checkbox").checked = ev.items.rider.status === "vorhanden";
   document.getElementById("rider-modal").classList.remove("hidden");
@@ -1012,9 +1020,28 @@ async function setRiderDone(done) {
   }
 }
 
-function downloadRiderCsv() {
-  if (!riderModalRowIndex) return;
-  const ev = eventsData.find((e) => e.rowIndex === riderModalRowIndex);
+async function deleteBooking(bookingRowIndex) {
+  const range = invSheetRange(CONFIG.BOOKINGS_SHEET_NAME, `A${bookingRowIndex}:E${bookingRowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [["", "", "", "", ""]] }),
+    });
+    bookings = bookings.filter((b) => b.rowIndex !== bookingRowIndex);
+    setStatus("Buchung entfernt.");
+    if (riderModalRowIndex) openRiderModal(riderModalRowIndex);
+    renderInventory();
+  } catch (e) {
+    setStatus("Buchung konnte nicht entfernt werden: " + e.message, true);
+  }
+}
+
+function downloadRiderCsv(rowIndex) {
+  const targetRow = rowIndex || riderModalRowIndex;
+  if (!targetRow) return;
+  const ev = eventsData.find((e) => e.rowIndex === targetRow);
   if (!ev) return;
   const projectBookings = bookings.filter((b) => b.project === ev.project);
 
@@ -1058,7 +1085,7 @@ async function loadInventory() {
 
     bookings = (bkData.values || [])
       .filter((r) => r[0])
-      .map((r) => ({ equipment: r[0], project: r[1] || "", date: r[2] || "", qty: parseFloat(r[3]) || 0, note: r[4] || "" }));
+      .map((r, i) => ({ rowIndex: i + 2, equipment: r[0], project: r[1] || "", date: r[2] || "", qty: parseFloat(r[3]) || 0, note: r[4] || "" }));
   } catch (e) {
     setStatus("Inventar konnte nicht geladen werden: " + e.message, true);
   }
@@ -1078,51 +1105,70 @@ function renderInventory() {
   const container = document.getElementById("inventory-list");
   if (!container) return;
 
-  const header = `<div class="inv-row inv-header">
-    <div class="inv-name">Equipment</div>
-    <div class="inv-cat">Kategorie</div>
-    <div class="inv-avail">Bestand</div>
-    <div style="width:70px"></div>
-  </div>`;
+  const categoryOrder = ["Beschallung", "Video", "Sonstiges", "Bühne", "Beleuchtung", "Verbrauchsmaterial"];
+  const grouped = {};
+  inventoryItems.forEach((item, idx) => {
+    const cat = item.category || "Sonstiges";
+    (grouped[cat] = grouped[cat] || []).push({ item, idx });
+  });
+  const categories = Object.keys(grouped).sort(
+    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b) || a.localeCompare(b)
+  );
 
-  const rows = inventoryItems
-    .map((item, idx) => {
-      const projects = eventProjectNames();
-      const projectOptions = projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+  const rowHtml = (item, idx) => {
+    const projects = eventProjectNames();
+    const projectOptions = projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
 
-      const itemBookings = bookings
-        .filter((b) => b.equipment === item.name)
-        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const itemBookings = bookings
+      .filter((b) => b.equipment === item.name)
+      .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 
-      const bookingsList = itemBookings.length
-        ? itemBookings
-            .map((b) => {
-              const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "(kein Datum)";
-              return `<div class="inv-booking-entry">${dateLabel} · ${escapeHtml(b.project)} · ${b.qty}×</div>`;
-            })
-            .join("")
-        : `<div class="inv-booking-entry inv-booking-empty">Noch keine Buchungen.</div>`;
+    const bookingsList = itemBookings.length
+      ? itemBookings
+          .map((b) => {
+            const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "(kein Datum)";
+            return `<div class="inv-booking-entry">${dateLabel} · ${escapeHtml(b.project)} · ${b.qty}×</div>`;
+          })
+          .join("")
+      : `<div class="inv-booking-entry inv-booking-empty">Noch keine Buchungen.</div>`;
 
-      return `<div class="inv-row">
-          <div class="inv-name">${escapeHtml(item.name)}${item.note ? `<div class="inv-cat">${escapeHtml(item.note)}</div>` : ""}</div>
-          <div class="inv-cat">${escapeHtml(item.category)}</div>
-          <div class="inv-avail">${item.stock}</div>
-          <button type="button" class="btn inv-book-btn" data-idx="${idx}">Buchen</button>
+    return `<div class="inv-row">
+        <div class="inv-name">${escapeHtml(item.name)}${item.note ? `<div class="inv-cat">${escapeHtml(item.note)}</div>` : ""}</div>
+        <div class="inv-cat">${escapeHtml(item.category)}</div>
+        <div class="inv-avail">${item.stock}</div>
+        <button type="button" class="btn inv-book-btn" data-idx="${idx}">Buchen</button>
+      </div>
+      <div class="inv-book-form" id="inv-book-form-${idx}">
+        <div class="inv-book-row">
+          <select id="inv-book-project-${idx}"><option value="">Event…</option>${projectOptions}</select>
+          <input type="date" id="inv-book-date-${idx}" />
+          <input type="number" id="inv-book-qty-${idx}" min="1" value="1" />
+          <button type="button" class="btn primary" data-confirm-idx="${idx}">Speichern</button>
         </div>
-        <div class="inv-book-form" id="inv-book-form-${idx}">
-          <div class="inv-book-row">
-            <select id="inv-book-project-${idx}"><option value="">Event…</option>${projectOptions}</select>
-            <input type="date" id="inv-book-date-${idx}" />
-            <input type="number" id="inv-book-qty-${idx}" min="1" value="1" />
-            <button type="button" class="btn primary" data-confirm-idx="${idx}">Speichern</button>
-          </div>
-          <div class="inv-book-availability" id="inv-book-avail-${idx}">Datum wählen, um Verfügbarkeit zu sehen.</div>
-          <div class="inv-bookings-list">${bookingsList}</div>
-        </div>`;
-    })
-    .join("");
+        <div class="inv-book-availability" id="inv-book-avail-${idx}">Datum wählen, um Verfügbarkeit zu sehen.</div>
+        <div class="inv-bookings-list">${bookingsList}</div>
+      </div>`;
+  };
 
-  container.innerHTML = header + (rows || `<div class="inv-row">Noch keine Equipment-Einträge im Inventar-Blatt.</div>`);
+  container.innerHTML = categories.length
+    ? categories
+        .map((cat) => {
+          const items = grouped[cat];
+          return `<details class="inv-category">
+            <summary>${escapeHtml(cat)} <span class="inv-category-count">${items.length}</span></summary>
+            <div class="inv-table">
+              <div class="inv-row inv-header">
+                <div class="inv-name">Equipment</div>
+                <div class="inv-cat">Kategorie</div>
+                <div class="inv-avail">Bestand</div>
+                <div style="width:70px"></div>
+              </div>
+              ${items.map(({ item, idx }) => rowHtml(item, idx)).join("")}
+            </div>
+          </details>`;
+        })
+        .join("")
+    : `<div class="empty">Noch keine Equipment-Einträge im Inventar-Blatt.</div>`;
 
   container.querySelectorAll(".inv-book-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1188,12 +1234,15 @@ function renderInventory() {
 async function addBooking(equipment, project, date, qty) {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${invSheetRange(CONFIG.BOOKINGS_SHEET_NAME, "A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
   try {
-    await apiFetch(url, {
+    const resp = await apiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ values: [[equipment, project, date, qty, ""]] }),
     });
-    bookings.push({ equipment, project, date, qty, note: "" });
+    const updatedRange = resp?.updates?.updatedRange || "";
+    const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+    const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+    bookings.push({ rowIndex: newRowIndex, equipment, project, date, qty, note: "" });
     setStatus("Buchung gespeichert.");
     renderInventory();
   } catch (e) {
@@ -1322,11 +1371,9 @@ function renderEvents() {
           const pillClass = computed === "vorhanden" ? "vorhanden" : computed === "in arbeit" ? "in-arbeit" : "fehlt";
           const pillLabel = computed === "vorhanden" ? "Vorhanden" : computed === "in arbeit" ? "In Arbeit" : "Fehlt";
           return `<div class="checklist-row">
-            <div class="checklist-label">${escapeHtml(def.label)}</div>
-            <button type="button" class="status-pill ${pillClass}" data-row="${ev.rowIndex}" data-open-rider="1">
-              ${pillLabel}
-            </button>
-            <span class="checklist-link" style="border:none;background:none;color:var(--text-muted);">Klicken für gebuchte Liste</span>
+            <div class="checklist-label checklist-label-link" data-row="${ev.rowIndex}" data-open-rider="1">${escapeHtml(def.label)}</div>
+            <span class="status-pill ${pillClass} static">${pillLabel}</span>
+            <button type="button" class="checklist-link-open rider-download" data-row="${ev.rowIndex}" title="CSV herunterladen"><i class="ti ti-download"></i></button>
           </div>`;
         }
 
@@ -1358,11 +1405,15 @@ function renderEvents() {
     })
     .join("");
 
-  container.querySelectorAll(".status-pill[data-open-rider]").forEach((btn) => {
-    btn.addEventListener("click", () => openRiderModal(parseInt(btn.dataset.row, 10)));
+  container.querySelectorAll(".checklist-label-link[data-open-rider]").forEach((el) => {
+    el.addEventListener("click", () => openRiderModal(parseInt(el.dataset.row, 10)));
   });
 
-  container.querySelectorAll(".status-pill:not([data-open-rider])").forEach((btn) => {
+  container.querySelectorAll(".rider-download").forEach((btn) => {
+    btn.addEventListener("click", () => downloadRiderCsv(parseInt(btn.dataset.row, 10)));
+  });
+
+  container.querySelectorAll(".status-pill:not(.static)").forEach((btn) => {
     btn.addEventListener("click", () => {
       const rowIndex = parseInt(btn.dataset.row, 10);
       toggleEventStatus(rowIndex, btn.dataset.statuscol, btn.dataset.key);
