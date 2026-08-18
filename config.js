@@ -34,7 +34,6 @@ const CONFIG = {
 
     // Programmheft
   PROGRAMMHEFT_SHEET_NAME: "Programmheft",
-  PROGRAMMTEXT_SHEET_NAME: "Programmtext",
   // Maximale Zeichenzahl für Kurzbios (gilt im öffentlichen Formular)
   BIO_MAX_CHARS: 800,
   // URL, unter der programmheft-formular.html erreichbar ist
