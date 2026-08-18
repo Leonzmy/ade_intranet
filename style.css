@@ -1345,10 +1345,6 @@ details summary {
 .contract-status { font-size: 12px; color: var(--text-secondary); }
 
 .template-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
 }
@@ -1375,32 +1371,4 @@ details summary {
   font-weight: 400;
   color: var(--text-muted);
   font-family: var(--font);
-}
-
-.template-edit-btn {
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  margin-left: auto;
-}
-
-.template-edit-btn:hover { color: var(--accent); }
-
-.template-edit-form {
-  flex-basis: 100%;
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.template-url-input {
-  flex: 1;
-  font-family: var(--font);
-  font-size: 12.5px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
 }
