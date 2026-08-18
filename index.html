@@ -21,8 +21,11 @@
 
   <div id="app" class="hidden app-shell">
     <div class="topbar-slim">
-      <span id="user-label"></span>
-      <button id="logout-btn" class="btn">Abmelden</button>
+      <div class="festival-badge small">19. aDe-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
+      <div class="topbar-slim-account">
+        <span id="user-label"></span>
+        <button id="logout-btn" class="btn">Abmelden</button>
+      </div>
     </div>
 
     <div class="app-body">
@@ -49,9 +52,20 @@
       <div id="view-dashboard" class="view">
         <h2 class="view-title">Dashboard</h2>
         <div id="dashboard-stats" class="dashboard-stats"></div>
-        <div class="dashboard-section">
-          <div class="dashboard-section-title">Nächste Termine</div>
-          <div id="dashboard-upcoming"></div>
+
+        <div class="dashboard-tasks-card" id="dashboard-tasks-card">
+          <div class="dashboard-tasks-header">
+            <i class="ti ti-alert-circle"></i> Aktuelle Aufgaben
+          </div>
+          <div id="dashboard-tasks-list"></div>
+        </div>
+
+        <div class="dashboard-calendar-card" id="dashboard-calendar-card">
+          <div class="dashboard-section-title-row">
+            <span class="dashboard-section-title">Kalender</span>
+            <span class="dashboard-cal-link">Zum Kalender <i class="ti ti-arrow-right"></i></span>
+          </div>
+          <div id="dashboard-mini-calendar" class="cal-month-grid mini"></div>
         </div>
       </div>
 
@@ -121,11 +135,8 @@
       </div>
 
       <div id="view-events" class="view hidden">
-        <div class="placeholder-view">
-          <i class="ti ti-ticket"></i>
-          <h2>Events</h2>
-          <p>Dieser Bereich ist in Vorbereitung.</p>
-        </div>
+        <h2 class="view-title">Events</h2>
+        <div id="events-list"></div>
       </div>
 
       <div id="view-inventory" class="view hidden">
