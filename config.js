@@ -14,6 +14,9 @@ const CONFIG = {
   // Name des Tabellenblatts mit Personen/Projekten/Festival-Editionen
   STAMMDATEN_SHEET_NAME: "Stammdaten",
 
+   // Name des Tabellenblatts mit dem Event-Vorbereitungsstatus
+  EVENTS_SHEET_NAME: "Events",
+  
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
   // Für einen gemeinsamen Festival-Kalender: die Kalender-ID aus den
