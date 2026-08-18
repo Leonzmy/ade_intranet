@@ -974,7 +974,7 @@ function contactsSheetRange(a1) {
 
 async function loadContacts() {
   try {
-    const range = contactsSheetRange("A2:F300");
+    const range = contactsSheetRange("A2:G300");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     contactsData = (data.values || [])
@@ -987,10 +987,15 @@ async function loadContacts() {
         email: r[3] || "",
         address: r[4] || "",
         phone: r[5] || "",
+        token: r[6] || "",
       }));
   } catch (e) {
     setStatus("Kontakte konnten nicht geladen werden: " + e.message, true);
   }
+}
+
+function genToken() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 function desiredContactsFromEvents() {
@@ -1018,17 +1023,18 @@ async function syncContacts() {
     const existing = contactsData.find((c) => c.name === name);
 
     if (!existing) {
+      const token = genToken();
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contactsSheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
       try {
         const resp = await apiFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", ""]] }),
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", token]] }),
         });
         const updatedRange = resp?.updates?.updatedRange || "";
         const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
         const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
-        contactsData.push({ rowIndex: newRowIndex, name, role: roleStr, events: eventsStr, email: "", address: "", phone: "" });
+        contactsData.push({ rowIndex: newRowIndex, name, role: roleStr, events: eventsStr, email: "", address: "", phone: "", token });
       } catch (e) {
         // weiter mit den übrigen Namen, auch wenn einer fehlschlägt
       }
@@ -1067,6 +1073,7 @@ function renderContacts() {
     <div class="contact-field">Email</div>
     <div class="contact-field">Adresse</div>
     <div class="contact-field-sm">Telefon</div>
+    <div style="width:36px"></div>
   </div>`;
 
   const rows = contactsData
@@ -1079,11 +1086,16 @@ function renderContacts() {
         <input type="email" class="contact-input" placeholder="E-Mail" value="${escapeHtml(c.email)}" data-row="${c.rowIndex}" data-field="email" />
         <input type="text" class="contact-input" placeholder="Adresse" value="${escapeHtml(c.address)}" data-row="${c.rowIndex}" data-field="address" />
         <input type="text" class="contact-input contact-field-sm" placeholder="Telefon" value="${escapeHtml(c.phone)}" data-row="${c.rowIndex}" data-field="phone" />
+        <button type="button" class="contact-link-btn" data-row="${c.rowIndex}" title="Formular-Link kopieren"><i class="ti ti-link"></i></button>
       </div>`
     )
     .join("");
 
   container.innerHTML = header + rows;
+
+  container.querySelectorAll(".contact-link-btn").forEach((btn) => {
+    btn.addEventListener("click", () => copyContactLink(parseInt(btn.dataset.row, 10)));
+  });
 
   container.querySelectorAll(".contact-input").forEach((input) => {
     input.addEventListener("change", () => {
@@ -1110,6 +1122,22 @@ async function updateContactField(rowIndex, field, value) {
     setStatus("Gespeichert.");
   } catch (e) {
     setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+async function copyContactLink(rowIndex) {
+  const c = contactsData.find((x) => x.rowIndex === rowIndex);
+  if (!c) return;
+  if (!c.token) {
+    setStatus("Kein Zugriffsschlüssel für diesen Kontakt vorhanden — Seite neu laden und erneut versuchen.", true);
+    return;
+  }
+  const link = `${CONFIG.PUBLIC_FORM_URL}?row=${c.rowIndex}&token=${encodeURIComponent(c.token)}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    setStatus(`Link für ${c.name} kopiert — einfach einfügen und verschicken.`);
+  } catch (e) {
+    window.prompt("Link kopieren (Strg+C):", link);
   }
 }
 
