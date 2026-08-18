@@ -97,6 +97,7 @@ window.addEventListener("DOMContentLoaded", () => {
   els.riderModalClose = document.getElementById("rider-modal-close");
   els.riderDoneCheckbox = document.getElementById("rider-done-checkbox");
   els.riderCsvBtn = document.getElementById("rider-csv-btn");
+  els.riderBookBtn = document.getElementById("rider-book-btn");
 
   bindClick(els.calPrev, () => shiftCalendar(-1));
   bindClick(els.calNext, () => shiftCalendar(1));
@@ -107,6 +108,12 @@ window.addEventListener("DOMContentLoaded", () => {
   bindSubmit(els.newEventForm, handleNewEvent);
   bindClick(els.riderModalClose, closeRiderModal);
   bindClick(els.riderCsvBtn, downloadRiderCsv);
+  bindClick(els.riderBookBtn, () => {
+    if (!riderModalRowIndex) return;
+    const ev = eventsData.find((e) => e.rowIndex === riderModalRowIndex);
+    if (!ev) return;
+    goToInventoryForBooking(ev.project, ev.date);
+  });
   if (els.riderDoneCheckbox) els.riderDoneCheckbox.addEventListener("change", (e) => setRiderDone(e.target.checked));
   if (els.riderModal) {
     els.riderModal.addEventListener("click", (e) => {
@@ -1173,6 +1180,7 @@ async function syncRiderStatuses() {
 }
 
 let riderModalRowIndex = null;
+let pendingBooking = null; // { project, date } — vom Rider-Popup übernommen
 
 function openRiderModal(rowIndex) {
   const ev = eventsData.find((e) => e.rowIndex === rowIndex);
@@ -1207,6 +1215,12 @@ function openRiderModal(rowIndex) {
 function closeRiderModal() {
   document.getElementById("rider-modal").classList.add("hidden");
   riderModalRowIndex = null;
+}
+
+function goToInventoryForBooking(project, date) {
+  pendingBooking = { project, date: date || "" };
+  closeRiderModal();
+  switchView("inventory");
 }
 
 async function setRiderDone(done) {
@@ -1417,7 +1431,18 @@ function renderInventory() {
     });
     dateInput.addEventListener("change", updateAvail);
     qtyInput.addEventListener("input", updateAvail);
+
+    if (pendingBooking) {
+      if (pendingBooking.project) projectSelect.value = pendingBooking.project;
+      if (pendingBooking.date) dateInput.value = pendingBooking.date;
+      updateAvail();
+    }
   });
+
+  if (pendingBooking) {
+    setStatus(`Event "${pendingBooking.project}" vorausgefüllt — bei der gewünschten Position auf "Buchen" klicken.`);
+    pendingBooking = null;
+  }
 
   container.querySelectorAll("[data-confirm-idx]").forEach((btn) => {
     btn.addEventListener("click", () => {
