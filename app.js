@@ -961,7 +961,8 @@ function renderEvents() {
   }
 
   container.innerHTML = eventsData
-    .map((ev) => {
+    .map((ev, idx) => {
+      const colorClass = `color-${idx % 5}`;
       const doneCount = EVENT_ITEMS.filter((def) => ev.items[def.key].status === "vorhanden").length;
       const complete = doneCount === EVENT_ITEMS.length;
 
@@ -981,7 +982,7 @@ function renderEvents() {
         </div>`;
       }).join("");
 
-      return `<div class="event-card">
+      return `<div class="event-card ${colorClass}">
         <div class="event-card-header">
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
           <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${EVENT_ITEMS.length} vorhanden</div>
