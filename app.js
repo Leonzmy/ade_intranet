@@ -1842,17 +1842,36 @@ function renderTemplates() {
   container.innerHTML = cats
     .map((cat) => {
       const url = contractTemplates[cat] || "";
+      const titleHtml = url
+        ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="template-cat-link">${escapeHtml(cat)}</a>`
+        : `<span class="template-cat-link muted">${escapeHtml(cat)} <span class="template-missing">— keine Vorlage verlinkt</span></span>`;
       return `<div class="template-row">
-        <div class="template-cat">${escapeHtml(cat)}</div>
-        <input type="text" class="template-url-input" placeholder="Google-Doc-URL" value="${escapeHtml(url)}" data-cat="${cat}" />
-        ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn">Öffnen</a>` : ""}
+        ${titleHtml}
+        <button type="button" class="template-edit-btn" data-cat="${cat}" title="Vorlagen-Link ändern"><i class="ti ti-pencil"></i></button>
+        <div class="template-edit-form hidden" id="template-edit-${cssEscape(cat)}">
+          <input type="text" class="template-url-input" placeholder="Google-Doc-URL aus eurem Verträge-Ordner" value="${escapeHtml(url)}" data-cat="${cat}" />
+          <button type="button" class="btn primary template-save-btn" data-cat="${cat}">Speichern</button>
+        </div>
       </div>`;
     })
     .join("");
 
-  container.querySelectorAll(".template-url-input").forEach((input) => {
-    input.addEventListener("change", () => updateTemplateUrl(input.dataset.cat, input.value.trim()));
+  container.querySelectorAll(".template-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById(`template-edit-${cssEscape(btn.dataset.cat)}`).classList.toggle("hidden");
+    });
   });
+
+  container.querySelectorAll(".template-save-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = container.querySelector(`.template-url-input[data-cat="${btn.dataset.cat}"]`);
+      updateTemplateUrl(btn.dataset.cat, input.value.trim());
+    });
+  });
+}
+
+function cssEscape(str) {
+  return str.replace(/[^a-zA-Z0-9]/g, "-");
 }
 
 async function updateTemplateUrl(cat, url) {
@@ -1886,11 +1905,13 @@ function renderContractsBrowser() {
       })
       .filter((e) => e.names.length > 0);
 
+    const totalPeople = eventsWithPeople.reduce((sum, e) => sum + e.names.length, 0);
+
     if (eventsWithPeople.length === 0) {
-      return `<div class="contract-role-group">
-        <div class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)}</div>
-        <div class="empty">Noch niemand eingetragen.</div>
-      </div>`;
+      return `<details class="contract-role-group">
+        <summary class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)} <span class="contract-count">0</span></summary>
+        <div class="contract-role-body"><div class="empty">Noch niemand eingetragen.</div></div>
+      </details>`;
     }
 
     const eventGroups = eventsWithPeople
@@ -1908,23 +1929,24 @@ function renderContractsBrowser() {
             </div>`;
           })
           .join("");
-        return `<div class="contract-event-group">
-          <div class="contract-event-label">${escapeHtml(event)}</div>
-          ${rows}
-        </div>`;
+        return `<details class="contract-event-group">
+          <summary class="contract-event-label">${escapeHtml(event)} <span class="contract-count">${names.length}</span></summary>
+          <div class="contract-event-body">${rows}</div>
+        </details>`;
       })
       .join("");
 
-    return `<div class="contract-role-group">
-      <div class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)}</div>
-      ${eventGroups}
-    </div>`;
+    return `<details class="contract-role-group">
+      <summary class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)} <span class="contract-count">${totalPeople}</span></summary>
+      <div class="contract-role-body">${eventGroups}</div>
+    </details>`;
   }).join("");
 
   container.innerHTML = html;
 
   container.querySelectorAll(".contract-person-row").forEach((row) => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (e) => {
+      e.stopPropagation();
       openContractModal(row.dataset.name, row.dataset.event, row.dataset.category, row.dataset.rolekey);
     });
   });
@@ -1954,12 +1976,14 @@ function openContractModal(name, event, category, roleKey) {
   };
 
   const fieldsEl = document.getElementById("contract-fields");
-  fieldsEl.innerHTML = fieldsDef
+  fieldsEl.innerHTML = `<div class="contract-fields-grid">${fieldsDef
     .map(
-      (f) => `<label for="contract-field-${f.key}">${escapeHtml(f.label)}</label>
-      <input type="text" id="contract-field-${f.key}" value="${escapeHtml(valueMap[f.key] || "")}" />`
+      (f) => `<div class="contract-field-card">
+        <label for="contract-field-${f.key}">${escapeHtml(f.label)}</label>
+        <input type="text" id="contract-field-${f.key}" placeholder="${escapeHtml(f.label)}" value="${escapeHtml(valueMap[f.key] || "")}" />
+      </div>`
     )
-    .join("");
+    .join("")}</div>`;
 
   const resultEl = document.getElementById("contract-result");
   resultEl.classList.add("hidden");
