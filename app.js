@@ -481,7 +481,8 @@ function renderMonthGrid(gridStart, events, targetEl, maxChips) {
     </div>`;
   }
 
-  targetEl.innerHTML = `<div class="cal-month-grid">${html}</div>`;
+  const gridClass = targetEl === els.calGrid ? "cal-month-grid" : "cal-month-grid mini";
+  targetEl.innerHTML = `<div class="${gridClass}">${html}</div>`;
 }
 
 function renderWeekGrid(weekStart, events) {
