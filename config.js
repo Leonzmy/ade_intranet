@@ -4,6 +4,7 @@
 const CONFIG = {
   // Google Cloud Console → APIs & Dienste → Anmeldedaten → OAuth-Client-ID (Webanwendung)
   GOOGLE_CLIENT_ID: "18494152203-egf4o2cir3ou4mfof13hdhbudhp2sp65.apps.googleusercontent.com",
+ 
 
   // Aus der URL des Google Sheets: docs.google.com/spreadsheets/d/HIER_STEHT_DIE_ID/edit
   SHEET_ID: "1oz133rU_InyfaYcHi_E7sV6kvH61Ht-XcXAAEnNjvk0",
