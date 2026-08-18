@@ -108,6 +108,8 @@ window.addEventListener("DOMContentLoaded", () => {
   els.navItems.forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
+  const dashCalCard = document.getElementById("dashboard-calendar-card");
+  if (dashCalCard) dashCalCard.addEventListener("click", () => switchView("calendar"));
   bindSubmit(els.newTaskForm, handleNewTask);
 
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -163,6 +165,7 @@ async function enterApp() {
   els.userLabel.textContent = userEmail || "";
   await loadStammdaten();
   await loadTasks();
+  await loadEvents();
   await syncDeadlinesToCalendar();
   await loadCalendar();
   renderDashboard();
@@ -438,7 +441,11 @@ async function loadCalendar() {
   }
 }
 
-function renderMonthGrid(gridStart, events) {
+function renderMonthGrid(gridStart, events, targetEl, maxChips) {
+  targetEl = targetEl || els.calGrid;
+  maxChips = maxChips || 3;
+  const referenceMonth = targetEl === els.calGrid ? calAnchor.getMonth() : new Date().getMonth();
+
   const eventsByDay = {};
   events.forEach((ev) => {
     const key = eventDateKey(ev);
@@ -447,7 +454,6 @@ function renderMonthGrid(gridStart, events) {
 
   const weekdayLabels = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const today = new Date();
-  const currentMonth = calAnchor.getMonth();
 
   let html = weekdayLabels.map((l) => `<div class="cal-weekday-label">${l}</div>`).join("");
 
@@ -455,10 +461,10 @@ function renderMonthGrid(gridStart, events) {
     const day = addDays(gridStart, i);
     const key = dateKey(day);
     const dayEvents = eventsByDay[key] || [];
-    const outside = day.getMonth() !== currentMonth;
+    const outside = day.getMonth() !== referenceMonth;
     const isToday = isSameDay(day, today);
 
-    const shown = dayEvents.slice(0, 3);
+    const shown = dayEvents.slice(0, maxChips);
     const extra = dayEvents.length - shown.length;
 
     const chips = shown
@@ -475,7 +481,7 @@ function renderMonthGrid(gridStart, events) {
     </div>`;
   }
 
-  els.calGrid.innerHTML = `<div class="cal-month-grid">${html}</div>`;
+  targetEl.innerHTML = `<div class="cal-month-grid">${html}</div>`;
 }
 
 function renderWeekGrid(weekStart, events) {
@@ -603,6 +609,7 @@ function switchView(view) {
   els.navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
   els.views.forEach((v) => v.classList.toggle("hidden", v.id !== `view-${view}`));
   if (view === "dashboard") renderDashboard();
+  if (view === "events") renderEvents();
 }
 
 function renderDashboard() {
@@ -618,23 +625,54 @@ function renderDashboard() {
     <div class="dashboard-stat"><div class="num">${later}</div><div class="label">Später</div></div>
   `;
 
-  const upcoming = (lastCalendarEvents || [])
-    .filter((ev) => !isDeadlineEvent(ev))
-    .slice(0, 5);
+  const urgencyRank = { overdue: 0, week: 1, later: 2 };
+  const sorted = [...open].sort((a, b) => {
+    const ua = urgencyRank[urgencyOf(a.due)];
+    const ub = urgencyRank[urgencyOf(b.due)];
+    if (ua !== ub) return ua - ub;
+    return (a.due || "").localeCompare(b.due || "");
+  });
+  const top = sorted.slice(0, 6);
 
-  els.dashboardUpcoming.innerHTML = upcoming.length
-    ? upcoming
-        .map((ev) => {
-          const raw = ev.start.dateTime || ev.start.date;
-          const d = new Date(raw);
-          const dateLabel = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-          const timeLabel = ev.start.dateTime
-            ? d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
-            : "ganztägig";
-          return `<div class="event"><div class="event-date">${dateLabel}<br>${timeLabel}</div><div class="event-title">${escapeHtml(ev.summary || "(ohne Titel)")}</div></div>`;
+  els.dashboardTasksList = els.dashboardTasksList || document.getElementById("dashboard-tasks-list");
+  els.dashboardTasksList.innerHTML = top.length
+    ? top
+        .map((t) => {
+          const urgency = urgencyOf(t.due);
+          const dueLabel = formatDue(t.due, urgency);
+          return `<div class="dashboard-task-row" data-row="${t.rowIndex}">
+            <div>
+              <div class="title">${escapeHtml(t.title)}</div>
+              <div class="project">${escapeHtml(t.project)}</div>
+            </div>
+            <div class="task-due ${urgency}">${dueLabel}</div>
+          </div>`;
         })
         .join("")
-    : `<div class="empty">Keine anstehenden Termine im aktuellen Monat.</div>`;
+    : `<div class="empty">Keine offenen Aufgaben — alles erledigt.</div>`;
+
+  els.dashboardTasksList.querySelectorAll(".dashboard-task-row").forEach((row) => {
+    row.addEventListener("click", () => switchView("tasks"));
+  });
+
+  renderDashboardCalendar();
+}
+
+async function renderDashboardCalendar() {
+  const target = document.getElementById("dashboard-mini-calendar");
+  if (!target) return;
+  const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const rangeStart = startOfWeek(firstOfMonth);
+  const rangeEnd = addDays(rangeStart, 42);
+  try {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${rangeStart.toISOString()}&timeMax=${rangeEnd.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=250`;
+    const data = await apiFetch(url);
+    renderMonthGrid(rangeStart, data.items || [], target, 2);
+  } catch (e) {
+    target.innerHTML = `<div class="empty">Kalender konnte nicht geladen werden.</div>`;
+  }
 }
 
 function renderTasks() {
@@ -869,4 +907,138 @@ function escapeHtml(str) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+// ---------- Events ----------
+
+const EVENT_ITEMS = [
+  { key: "probenplan", label: "Probenplan", statusCol: "B", linkCol: "C" },
+  { key: "rider", label: "Technical Rider", statusCol: "D", linkCol: "E" },
+  { key: "bilder", label: "Bilder", statusCol: "F", linkCol: "G" },
+  { key: "texte", label: "Texte (Ensemble & Komponist:in)", statusCol: "H", linkCol: "I" },
+  { key: "vertragKomponist", label: "Vertrag Komponist:in", statusCol: "J", linkCol: "K" },
+  { key: "vertragEnsemble", label: "Vertrag Ensemble", statusCol: "L", linkCol: "M" },
+];
+
+let eventsData = []; // [{rowIndex, project, items: {key: {status, link}}}]
+
+function eventsSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.EVENTS_SHEET_NAME)}!${a1}`;
+}
+
+async function loadEvents() {
+  try {
+    const range = eventsSheetRange("A2:M50");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
+    const data = await apiFetch(url);
+    const rows = data.values || [];
+    eventsData = rows
+      .filter((r) => r[0])
+      .map((r, i) => {
+        const items = {};
+        EVENT_ITEMS.forEach((def, idx) => {
+          const statusIdx = 1 + idx * 2;
+          const linkIdx = 2 + idx * 2;
+          items[def.key] = {
+            status: (r[statusIdx] || "fehlt").trim().toLowerCase(),
+            link: r[linkIdx] || "",
+          };
+        });
+        return { rowIndex: i + 2, project: r[0], items };
+      });
+  } catch (e) {
+    setStatus("Events konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+function renderEvents() {
+  const container = document.getElementById("events-list");
+  if (!container) return;
+
+  if (eventsData.length === 0) {
+    container.innerHTML = `<div class="empty">Keine Events gefunden. Lege im Events-Blatt Zeilen für deine Projekte an.</div>`;
+    return;
+  }
+
+  container.innerHTML = eventsData
+    .map((ev) => {
+      const doneCount = EVENT_ITEMS.filter((def) => ev.items[def.key].status === "vorhanden").length;
+      const complete = doneCount === EVENT_ITEMS.length;
+
+      const rows = EVENT_ITEMS.map((def) => {
+        const item = ev.items[def.key];
+        const isDone = item.status === "vorhanden";
+        return `<div class="checklist-row">
+          <div class="checklist-label">${escapeHtml(def.label)}</div>
+          <button type="button" class="status-pill ${isDone ? "vorhanden" : "fehlt"}"
+            data-row="${ev.rowIndex}" data-statuscol="${def.statusCol}" data-key="${def.key}">
+            ${isDone ? "Vorhanden" : "Fehlt"}
+          </button>
+          <input type="text" class="checklist-link" placeholder="Link (Google Drive o.ä.)"
+            value="${escapeHtml(item.link)}"
+            data-row="${ev.rowIndex}" data-linkcol="${def.linkCol}" data-key="${def.key}" />
+          ${item.link ? `<a class="checklist-link-open" href="${escapeHtml(item.link)}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i></a>` : `<span class="checklist-link-open"></span>`}
+        </div>`;
+      }).join("");
+
+      return `<div class="event-card">
+        <div class="event-card-header">
+          <div class="event-card-title">${escapeHtml(ev.project)}</div>
+          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${EVENT_ITEMS.length} vorhanden</div>
+        </div>
+        ${rows}
+      </div>`;
+    })
+    .join("");
+
+  container.querySelectorAll(".status-pill").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const rowIndex = parseInt(btn.dataset.row, 10);
+      toggleEventStatus(rowIndex, btn.dataset.statuscol, btn.dataset.key);
+    });
+  });
+
+  container.querySelectorAll(".checklist-link").forEach((input) => {
+    input.addEventListener("change", () => {
+      const rowIndex = parseInt(input.dataset.row, 10);
+      updateEventLink(rowIndex, input.dataset.linkcol, input.dataset.key, input.value.trim());
+    });
+  });
+}
+
+async function toggleEventStatus(rowIndex, col, key) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const newStatus = ev.items[key].status === "vorhanden" ? "fehlt" : "vorhanden";
+  const range = eventsSheetRange(`${col}${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[newStatus]] }),
+    });
+    ev.items[key].status = newStatus;
+    renderEvents();
+  } catch (e) {
+    setStatus("Status konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+async function updateEventLink(rowIndex, col, key, value) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const range = eventsSheetRange(`${col}${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    ev.items[key].link = value;
+    renderEvents();
+  } catch (e) {
+    setStatus("Link konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
