@@ -17,6 +17,9 @@ const CONFIG = {
   // Google-Kalender-Einstellungen (Format: xxxxx@group.calendar.google.com)
   CALENDAR_ID: "primary",
 
+  // Vorbelegter Wert im "Neue Aufgabe"-Formular für das Festival-Feld
+  DEFAULT_FESTIVAL: "ade #19",
+
   // Anzahl Tage, ab denen eine Aufgabe als "diese Woche" statt "später" gilt
   WEEK_THRESHOLD_DAYS: 7,
 };
