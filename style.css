@@ -37,13 +37,19 @@ body {
 }
 
 .topbar-slim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 10px 20px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+  z-index: 30;
 }
 
 .topbar-slim-account {
@@ -65,6 +71,7 @@ body {
 .app-body {
   display: flex;
   flex: 1;
+  padding-top: 52px;
 }
 
 .sidebar {
@@ -74,6 +81,12 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  position: fixed;
+  top: 52px;
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 20;
 }
 
 .sidebar-header { padding: 20px 16px 0; }
@@ -204,8 +217,9 @@ body {
 main {
   flex: 1;
   max-width: 1000px;
-  margin: 0 auto;
-  padding: 2rem 1.75rem;
+  margin-left: calc(var(--sidebar-w) + 1.75rem);
+  margin-right: auto;
+  padding: 2rem 1.75rem 2rem 0;
   width: 100%;
 }
 
@@ -348,7 +362,7 @@ main {
 #events-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
+  gap: 32px;
 }
 
 @media (max-width: 760px) {
@@ -406,7 +420,7 @@ main {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 18px;
+  padding: 13px 18px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -758,11 +772,12 @@ details summary {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  min-height: 84px;
+  height: 100px;
   padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  overflow: hidden;
 }
 
 .cal-day.outside { background: var(--neutral-bg); }
