@@ -6,7 +6,7 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: "18494152203-01ohv2j7lsga7il9huvv7tosqvco7iuq.apps.googleusercontent.com",
 
   // Aus der URL des Google Sheets: docs.google.com/spreadsheets/d/HIER_STEHT_DIE_ID/edit
-  SHEET_ID: "DEINE_SHEET_ID",
+  SHEET_ID: "1xrxCdSjp4VDqbX23pSvJGus9q8eUliRowhVUhqUeD-g",
 
   // Name des Tabellenblatts (Tab) mit den Aufgaben
   TASKS_SHEET_NAME: "Aufgaben",
