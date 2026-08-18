@@ -181,6 +181,8 @@ async function enterApp() {
   await loadTasks();
   await loadEvents();
   await loadInventory();
+  await loadContacts();
+  await syncContacts();
   await syncRiderStatuses();
   await syncDeadlinesToCalendar();
   await loadCalendar();
@@ -628,6 +630,7 @@ function switchView(view) {
   if (view === "dashboard") renderDashboard();
   if (view === "events") renderEvents();
   if (view === "inventory") renderInventory();
+  if (view === "contacts") renderContacts();
 }
 
 function renderDashboard() {
@@ -928,6 +931,186 @@ function escapeHtml(str) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+// ---------- Event-Personen & Kontakte ----------
+
+const PEOPLE_ROLES = [
+  { key: "ensemble", col: "O", label: "Ensemble" },
+  { key: "interpreten", col: "P", label: "Interpret:in" },
+  { key: "komponisten", col: "Q", label: "Komponist:in" },
+];
+
+async function updateEventPeople(rowIndex, col, value) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const range = eventsSheetRange(`${col}${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    if (col === "O") ev.ensemble = value;
+    if (col === "P") ev.interpreten = value;
+    if (col === "Q") ev.komponisten = value;
+    setStatus("Gespeichert.");
+    await syncContacts();
+    const contactsView = document.getElementById("view-contacts");
+    if (contactsView && !contactsView.classList.contains("hidden")) {
+      renderContacts();
+    }
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+let contactsData = []; // [{rowIndex, name, role, events, email, address, phone}]
+
+function contactsSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.CONTACTS_SHEET_NAME)}!${a1}`;
+}
+
+async function loadContacts() {
+  try {
+    const range = contactsSheetRange("A2:F300");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
+    const data = await apiFetch(url);
+    contactsData = (data.values || [])
+      .filter((r) => r[0])
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        name: r[0],
+        role: r[1] || "",
+        events: r[2] || "",
+        email: r[3] || "",
+        address: r[4] || "",
+        phone: r[5] || "",
+      }));
+  } catch (e) {
+    setStatus("Kontakte konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+function desiredContactsFromEvents() {
+  // Baut aus allen Events eine Map: Name -> { roles:Set, events:Set }
+  const map = new Map();
+  eventsData.forEach((ev) => {
+    PEOPLE_ROLES.forEach((r) => {
+      const raw = ev[r.key] || "";
+      raw.split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => {
+        if (!map.has(name)) map.set(name, { roles: new Set(), events: new Set() });
+        map.get(name).roles.add(r.label);
+        map.get(name).events.add(ev.project);
+      });
+    });
+  });
+  return map;
+}
+
+async function syncContacts() {
+  const desired = desiredContactsFromEvents();
+
+  for (const [name, info] of desired.entries()) {
+    const roleStr = Array.from(info.roles).join(", ");
+    const eventsStr = Array.from(info.events).join(", ");
+    const existing = contactsData.find((c) => c.name === name);
+
+    if (!existing) {
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contactsSheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+      try {
+        const resp = await apiFetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", ""]] }),
+        });
+        const updatedRange = resp?.updates?.updatedRange || "";
+        const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+        const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+        contactsData.push({ rowIndex: newRowIndex, name, role: roleStr, events: eventsStr, email: "", address: "", phone: "" });
+      } catch (e) {
+        // weiter mit den übrigen Namen, auch wenn einer fehlschlägt
+      }
+    } else if (existing.role !== roleStr || existing.events !== eventsStr) {
+      const range = contactsSheetRange(`B${existing.rowIndex}:C${existing.rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+      try {
+        await apiFetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[roleStr, eventsStr]] }),
+        });
+        existing.role = roleStr;
+        existing.events = eventsStr;
+      } catch (e) {
+        // still update locally so the UI reflects reality even if the write failed
+        existing.role = roleStr;
+        existing.events = eventsStr;
+      }
+    }
+  }
+}
+
+function renderContacts() {
+  const container = document.getElementById("contacts-list");
+  if (!container) return;
+
+  if (contactsData.length === 0) {
+    container.innerHTML = `<div class="empty">Noch niemand eingetragen — trag Ensemble, Interpret:innen oder Komponist:innen bei einem Event ein, dann erscheinen sie hier automatisch.</div>`;
+    return;
+  }
+
+  const header = `<div class="inv-row inv-header contact-row">
+    <div class="contact-name">Name</div>
+    <div class="contact-role">Rolle</div>
+    <div class="contact-field">Email</div>
+    <div class="contact-field">Adresse</div>
+    <div class="contact-field-sm">Telefon</div>
+  </div>`;
+
+  const rows = contactsData
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(
+      (c) => `<div class="inv-row contact-row">
+        <div class="contact-name">${escapeHtml(c.name)}<div class="inv-cat">${escapeHtml(c.events)}</div></div>
+        <div class="contact-role">${escapeHtml(c.role)}</div>
+        <input type="email" class="contact-input" placeholder="E-Mail" value="${escapeHtml(c.email)}" data-row="${c.rowIndex}" data-field="email" />
+        <input type="text" class="contact-input" placeholder="Adresse" value="${escapeHtml(c.address)}" data-row="${c.rowIndex}" data-field="address" />
+        <input type="text" class="contact-input contact-field-sm" placeholder="Telefon" value="${escapeHtml(c.phone)}" data-row="${c.rowIndex}" data-field="phone" />
+      </div>`
+    )
+    .join("");
+
+  container.innerHTML = header + rows;
+
+  container.querySelectorAll(".contact-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const rowIndex = parseInt(input.dataset.row, 10);
+      updateContactField(rowIndex, input.dataset.field, input.value.trim());
+    });
+  });
+}
+
+async function updateContactField(rowIndex, field, value) {
+  const colMap = { email: "D", address: "E", phone: "F" };
+  const col = colMap[field];
+  const c = contactsData.find((x) => x.rowIndex === rowIndex);
+  if (!c || !col) return;
+  const range = contactsSheetRange(`${col}${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    c[field] = value;
+    setStatus("Gespeichert.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 // ---------- Rider-Status & Modal ----------
@@ -1325,7 +1508,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:N50");
+    const range = eventsSheetRange("A2:Q50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -1341,7 +1524,15 @@ async function loadEvents() {
             link: r[linkIdx] || "",
           };
         });
-        return { rowIndex: i + 2, project: r[0], date: r[1] || "", items };
+        return {
+          rowIndex: i + 2,
+          project: r[0],
+          date: r[1] || "",
+          items,
+          ensemble: r[14] || "",
+          interpreten: r[15] || "",
+          komponisten: r[16] || "",
+        };
       });
   } catch (e) {
     setStatus("Events konnten nicht geladen werden: " + e.message, true);
@@ -1400,10 +1591,34 @@ function renderEvents() {
           <i class="ti ti-calendar-event"></i>
           <input type="date" class="event-date-input" value="${escapeHtml(ev.date)}" data-row="${ev.rowIndex}" />
         </div>
+        <div class="event-people">
+          <div class="event-people-field">
+            <label>Ensemble</label>
+            <input type="text" class="event-people-input" placeholder="Name(n), mit Komma trennen"
+              value="${escapeHtml(ev.ensemble)}" data-row="${ev.rowIndex}" data-people-col="O" />
+          </div>
+          <div class="event-people-field">
+            <label>Interpret:innen</label>
+            <input type="text" class="event-people-input" placeholder="Name(n), mit Komma trennen"
+              value="${escapeHtml(ev.interpreten)}" data-row="${ev.rowIndex}" data-people-col="P" />
+          </div>
+          <div class="event-people-field">
+            <label>Komponist:innen</label>
+            <input type="text" class="event-people-input" placeholder="Name(n), mit Komma trennen"
+              value="${escapeHtml(ev.komponisten)}" data-row="${ev.rowIndex}" data-people-col="Q" />
+          </div>
+        </div>
         ${rows}
       </div>`;
     })
     .join("");
+
+  container.querySelectorAll(".event-people-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const rowIndex = parseInt(input.dataset.row, 10);
+      updateEventPeople(rowIndex, input.dataset.peopleCol, input.value);
+    });
+  });
 
   container.querySelectorAll(".checklist-label-link[data-open-rider]").forEach((el) => {
     el.addEventListener("click", () => openRiderModal(parseInt(el.dataset.row, 10)));
