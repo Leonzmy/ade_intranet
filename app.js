@@ -26,6 +26,28 @@ let tokenClient = null;
 
 const els = {};
 
+const TOKEN_KEY = "fd_access_token";
+const TOKEN_EXPIRY_KEY = "fd_token_expiry";
+
+function saveToken(token, expiresInSeconds) {
+  // 60 Sekunden Sicherheitspuffer vor dem echten Ablauf
+  const expiryTime = Date.now() + expiresInSeconds * 1000 - 60000;
+  sessionStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(expiryTime));
+}
+
+function loadStoredToken() {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+  if (token && expiry && Date.now() < Number(expiry)) return token;
+  return null;
+}
+
+function clearStoredToken() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   els.loginScreen = document.getElementById("login-screen");
   els.app = document.getElementById("app");
@@ -56,26 +78,55 @@ window.addEventListener("DOMContentLoaded", () => {
     scope: SCOPES,
     callback: onTokenReceived,
   });
+
+  // 1. Gespeicherten, noch gültigen Token aus diesem Browser-Tab wiederverwenden
+  const stored = loadStoredToken();
+  if (stored) {
+    accessToken = stored;
+    enterApp();
+    return;
+  }
+
+  // 2. Sonst still versuchen, ohne Klick anzumelden (funktioniert nur, wenn
+  //    die Google-Sitzung noch aktiv ist und Zugriff bereits erteilt wurde).
+  //    Schlägt das fehl, bleibt einfach der normale Login-Bildschirm sichtbar.
+  tokenClient.requestAccessToken({ prompt: "" });
 });
 
 function handleLogin() {
-  tokenClient.requestAccessToken({ prompt: "consent" });
+  // Kein erzwungener "consent"-Prompt mehr: Google zeigt den vollen
+  // Berechtigungsdialog nur, wenn er wirklich nötig ist (z.B. beim allerersten
+  // Mal oder nach einem Widerruf), sonst geht der Login schneller.
+  tokenClient.requestAccessToken({ prompt: "" });
 }
 
 function handleLogout() {
   if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
   accessToken = null;
   userEmail = null;
+  clearStoredToken();
   els.app.classList.add("hidden");
   els.loginScreen.classList.remove("hidden");
 }
 
 async function onTokenReceived(resp) {
   if (resp.error) {
+    // Der stille Auto-Login-Versuch beim Laden der Seite schlägt erwartbar
+    // fehl, wenn noch nie eingeloggt wurde oder die Google-Sitzung
+    // abgelaufen ist — dann einfach normal den Login-Bildschirm zeigen,
+    // ohne rote Fehlermeldung.
+    if (resp.error === "interaction_required" || resp.error === "access_denied") {
+      return;
+    }
     setStatus("Anmeldung fehlgeschlagen: " + resp.error, true);
     return;
   }
   accessToken = resp.access_token;
+  saveToken(accessToken, resp.expires_in || 3600);
+  await enterApp();
+}
+
+async function enterApp() {
   els.loginScreen.classList.add("hidden");
   els.app.classList.remove("hidden");
   setStatus("Lade Daten…");
@@ -95,6 +146,16 @@ async function apiFetch(url, options = {}) {
       ...(options.headers || {}),
     },
   });
+  if (res.status === 401) {
+    // Token ist abgelaufen oder wurde extern widerrufen (z.B. auf
+    // myaccount.google.com). Gespeicherten Token verwerfen und zurück zum
+    // Login-Bildschirm statt eine rote Fehlermeldung zu zeigen.
+    clearStoredToken();
+    accessToken = null;
+    els.app.classList.add("hidden");
+    els.loginScreen.classList.remove("hidden");
+    throw new Error("Sitzung abgelaufen, bitte erneut anmelden.");
+  }
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`API-Fehler (${res.status}): ${body}`);
