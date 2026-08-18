@@ -32,6 +32,9 @@ const CONFIG = {
     // Dieselbe Apps-Script-Web-App-URL wie in kontakt-formular.html (WEBAPP_URL)
   WEBAPP_URL: "https://script.google.com/macros/s/AKfycbzYq3uojflMADX03NrX3e4_4DeB5c48o1mXHzGwSiGv88g0vuJ_bhrySTm_nkqNZ5UlLQ/exec",
 
+  CONTRACT_DETAILS_SHEET_NAME: "Vertragsdetails",
+ADMIN_KEY: "ade19-intern-9f3k2m",
+  
     // Feste Vertragsvorlagen (nicht im Frontend änderbar)
   CONTRACT_TEMPLATES: {
     "Ensemble": "https://docs.google.com/document/d/1Cbh_-Mp9tjHaa6z7RK-F2Q223C-Tc-KL-LHNDJBbOEo/edit",
