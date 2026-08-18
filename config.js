@@ -17,6 +17,10 @@ const CONFIG = {
    // Name des Tabellenblatts mit dem Event-Vorbereitungsstatus
   EVENTS_SHEET_NAME: "Events",
   
+  // Name der Tabellenblätter für Technik-Inventar und Buchungen
+  INVENTORY_SHEET_NAME: "Inventar",
+  BOOKINGS_SHEET_NAME: "Buchungen",
+  
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
   // Für einen gemeinsamen Festival-Kalender: die Kalender-ID aus den
