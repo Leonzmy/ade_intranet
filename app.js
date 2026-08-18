@@ -98,6 +98,8 @@ window.addEventListener("DOMContentLoaded", () => {
   els.riderDoneCheckbox = document.getElementById("rider-done-checkbox");
   els.riderCsvBtn = document.getElementById("rider-csv-btn");
   els.riderBookBtn = document.getElementById("rider-book-btn");
+  els.contractModalClose = document.getElementById("contract-modal-close");
+  els.contractGenerateBtn = document.getElementById("contract-generate-btn");
 
   bindClick(els.calPrev, () => shiftCalendar(-1));
   bindClick(els.calNext, () => shiftCalendar(1));
@@ -114,6 +116,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!ev) return;
     goToInventoryForBooking(ev.project, ev.date);
   });
+  bindClick(els.contractModalClose, closeContractModal);
+  bindClick(els.contractGenerateBtn, handleGenerateContract);
+  const contractModalEl = document.getElementById("contract-modal");
+  if (contractModalEl) {
+    contractModalEl.addEventListener("click", (e) => {
+      if (e.target === contractModalEl) closeContractModal();
+    });
+  }
   if (els.riderDoneCheckbox) els.riderDoneCheckbox.addEventListener("change", (e) => setRiderDone(e.target.checked));
   if (els.riderModal) {
     els.riderModal.addEventListener("click", (e) => {
@@ -190,6 +200,8 @@ async function enterApp() {
   await loadInventory();
   await loadContacts();
   await syncContacts();
+  await loadContractTemplates();
+  await loadContractDetails();
   await syncRiderStatuses();
   await syncDeadlinesToCalendar();
   await loadCalendar();
@@ -638,6 +650,7 @@ function switchView(view) {
   if (view === "events") renderEvents();
   if (view === "inventory") renderInventory();
   if (view === "contacts") renderContacts();
+  if (view === "contracts") { renderTemplates(); renderContractsBrowser(); }
 }
 
 function renderDashboard() {
@@ -1761,5 +1774,273 @@ async function updateEventLink(rowIndex, col, key, value) {
     renderEvents();
   } catch (e) {
     setStatus("Link konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+// ---------- Verträge ----------
+
+const CONTRACT_ROLES = [
+  { key: "ensemble", label: "Ensemble", category: "Ensemble" },
+  { key: "interpreten", label: "Interpret:innen", category: "Interpret:in" },
+  { key: "komponisten", label: "Komponist:innen", category: "Komponist:in" },
+];
+
+const CONTRACT_ROLE_FIELDS = {
+  "Ensemble": [{ key: "GESAMTSUMME", label: "Vereinbarte Gesamtsumme" }],
+  "Interpret:in": [{ key: "INSTRUMENT", label: "Instrument" }],
+  "Komponist:in": [
+    { key: "LAENGE", label: "Länge der Komposition" },
+    { key: "HONORAR", label: "Vereinbartes Honorar" },
+  ],
+};
+
+let contractTemplates = {}; // { "Ensemble": url, "Interpret:in": url, "Komponist:in": url }
+let contractDetails = [];   // [{name, event, role, ...fields, docUrl, pdfUrl, createdAt}]
+let contractModalContext = null; // { name, event, category, roleKey }
+
+function templatesSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.CONTRACT_TEMPLATES_SHEET_NAME)}!${a1}`;
+}
+
+function contractDetailsSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.CONTRACT_DETAILS_SHEET_NAME)}!${a1}`;
+}
+
+async function loadContractTemplates() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${templatesSheetRange("A2:B10")}`;
+    const data = await apiFetch(url);
+    contractTemplates = {};
+    (data.values || []).forEach((r) => {
+      if (r[0]) contractTemplates[r[0]] = r[1] || "";
+    });
+  } catch (e) {
+    setStatus("Vertragsvorlagen konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+async function loadContractDetails() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contractDetailsSheetRange("A2:J300")}`;
+    const data = await apiFetch(url);
+    contractDetails = (data.values || [])
+      .map((r) => ({
+        name: r[0], event: r[1], role: r[2],
+        instrument: r[3] || "", laenge: r[4] || "", honorar: r[5] || "", gesamtsumme: r[6] || "",
+        docUrl: r[7] || "", pdfUrl: r[8] || "", createdAt: r[9] || "",
+      }))
+      .filter((c) => c.name);
+  } catch (e) {
+    setStatus("Vertragsdetails konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+function renderTemplates() {
+  const container = document.getElementById("templates-list");
+  if (!container) return;
+  const cats = ["Ensemble", "Interpret:in", "Komponist:in"];
+  container.innerHTML = cats
+    .map((cat) => {
+      const url = contractTemplates[cat] || "";
+      return `<div class="template-row">
+        <div class="template-cat">${escapeHtml(cat)}</div>
+        <input type="text" class="template-url-input" placeholder="Google-Doc-URL" value="${escapeHtml(url)}" data-cat="${cat}" />
+        ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="btn">Öffnen</a>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  container.querySelectorAll(".template-url-input").forEach((input) => {
+    input.addEventListener("change", () => updateTemplateUrl(input.dataset.cat, input.value.trim()));
+  });
+}
+
+async function updateTemplateUrl(cat, url) {
+  const cats = ["Ensemble", "Interpret:in", "Komponist:in"];
+  const rowIndex = cats.indexOf(cat) + 2;
+  const range = templatesSheetRange(`B${rowIndex}`);
+  const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(apiUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[url]] }),
+    });
+    contractTemplates[cat] = url;
+    setStatus("Vorlage aktualisiert.");
+    renderTemplates();
+  } catch (e) {
+    setStatus("Vorlage konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+function renderContractsBrowser() {
+  const container = document.getElementById("contracts-browser");
+  if (!container) return;
+
+  const html = CONTRACT_ROLES.map((roleDef) => {
+    const eventsWithPeople = eventsData
+      .map((ev) => {
+        const names = (ev[roleDef.key] || "").split(",").map((s) => s.trim()).filter(Boolean);
+        return { event: ev.project, names };
+      })
+      .filter((e) => e.names.length > 0);
+
+    if (eventsWithPeople.length === 0) {
+      return `<div class="contract-role-group">
+        <div class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)}</div>
+        <div class="empty">Noch niemand eingetragen.</div>
+      </div>`;
+    }
+
+    const eventGroups = eventsWithPeople
+      .map(({ event, names }) => {
+        const rows = names
+          .map((name) => {
+            const existing = contractDetails.find(
+              (c) => c.name === name && c.event === event && c.role === roleDef.category
+            );
+            const statusLabel = existing ? "Vertrag erstellt" : "Kein Vertrag";
+            const statusClass = existing ? "done" : "pending";
+            return `<div class="contract-person-row" data-name="${escapeHtml(name)}" data-event="${escapeHtml(event)}" data-category="${escapeHtml(roleDef.category)}" data-rolekey="${roleDef.key}">
+              <span class="contract-person-name">${escapeHtml(name)}</span>
+              <span class="contract-person-status ${statusClass}">${statusLabel}</span>
+            </div>`;
+          })
+          .join("");
+        return `<div class="contract-event-group">
+          <div class="contract-event-label">${escapeHtml(event)}</div>
+          ${rows}
+        </div>`;
+      })
+      .join("");
+
+    return `<div class="contract-role-group">
+      <div class="contract-role-header"><i class="ti ti-users"></i> ${escapeHtml(roleDef.label)}</div>
+      ${eventGroups}
+    </div>`;
+  }).join("");
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".contract-person-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      openContractModal(row.dataset.name, row.dataset.event, row.dataset.category, row.dataset.rolekey);
+    });
+  });
+}
+
+function openContractModal(name, event, category, roleKey) {
+  contractModalContext = { name, event, category, roleKey };
+
+  document.getElementById("contract-modal-title").textContent = `Vertrag — ${name}`;
+
+  const contact = contactsData.find((c) => c.name === name);
+  const infoEl = document.getElementById("contract-contact-info");
+  infoEl.innerHTML = `
+    <div><strong>${escapeHtml(name)}</strong></div>
+    <div>${contact && contact.email ? escapeHtml(contact.email) : "Keine E-Mail hinterlegt"}</div>
+    <div>${contact ? escapeHtml(formatAddress(contact)) : "—"}</div>
+    <div>Event: ${escapeHtml(event)}</div>
+  `;
+
+  const fieldsDef = CONTRACT_ROLE_FIELDS[category] || [];
+  const existing = contractDetails.find((c) => c.name === name && c.event === event && c.role === category);
+  const valueMap = {
+    INSTRUMENT: existing?.instrument || "",
+    LAENGE: existing?.laenge || "",
+    HONORAR: existing?.honorar || "",
+    GESAMTSUMME: existing?.gesamtsumme || "",
+  };
+
+  const fieldsEl = document.getElementById("contract-fields");
+  fieldsEl.innerHTML = fieldsDef
+    .map(
+      (f) => `<label for="contract-field-${f.key}">${escapeHtml(f.label)}</label>
+      <input type="text" id="contract-field-${f.key}" value="${escapeHtml(valueMap[f.key] || "")}" />`
+    )
+    .join("");
+
+  const resultEl = document.getElementById("contract-result");
+  resultEl.classList.add("hidden");
+  resultEl.innerHTML = "";
+  if (existing && existing.docUrl) {
+    resultEl.classList.remove("hidden");
+    resultEl.innerHTML = `Zuletzt erstellt: <a href="${escapeHtml(existing.docUrl)}" target="_blank" rel="noopener">Google Doc öffnen</a><a href="${escapeHtml(existing.pdfUrl)}" target="_blank" rel="noopener">Als PDF herunterladen</a>`;
+  }
+
+  document.getElementById("contract-status").textContent = "";
+  document.getElementById("contract-modal").classList.remove("hidden");
+}
+
+function closeContractModal() {
+  document.getElementById("contract-modal").classList.add("hidden");
+  contractModalContext = null;
+}
+
+async function handleGenerateContract() {
+  if (!contractModalContext) return;
+  const { name, event, category } = contractModalContext;
+  const templateUrl = contractTemplates[category];
+  if (!templateUrl) {
+    setStatus(`Keine Vorlage für "${category}" hinterlegt — erst bei Vorlagen eintragen.`, true);
+    return;
+  }
+  if (!CONFIG.WEBAPP_URL || CONFIG.WEBAPP_URL.startsWith("TRAGE_HIER")) {
+    setStatus("WEBAPP_URL ist in config.js noch nicht eingetragen.", true);
+    return;
+  }
+
+  const contact = contactsData.find((c) => c.name === name);
+  const ev = eventsData.find((e) => e.project === event);
+  const fieldsDef = CONTRACT_ROLE_FIELDS[category] || [];
+  const fields = {
+    NAME: name,
+    EMAIL: contact?.email || "",
+    ADRESSE: contact ? formatAddress(contact) : "",
+    EVENT: event,
+    DATUM: ev?.date || "",
+    FESTIVAL: CONFIG.DEFAULT_FESTIVAL || "",
+  };
+  fieldsDef.forEach((f) => {
+    const input = document.getElementById(`contract-field-${f.key}`);
+    fields[f.key] = input ? input.value.trim() : "";
+  });
+
+  const statusEl = document.getElementById("contract-status");
+  const btn = document.getElementById("contract-generate-btn");
+  btn.disabled = true;
+  statusEl.textContent = "Wird erstellt…";
+
+  try {
+    const res = await fetch(CONFIG.WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "generateContract",
+        adminKey: CONFIG.ADMIN_KEY,
+        templateUrl,
+        name,
+        event,
+        role: category,
+        fields,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      statusEl.textContent = data.error || "Fehler bei der Vertragserstellung.";
+      btn.disabled = false;
+      return;
+    }
+    statusEl.textContent = "Vertrag erstellt.";
+    const resultEl = document.getElementById("contract-result");
+    resultEl.classList.remove("hidden");
+    resultEl.innerHTML = `<a href="${escapeHtml(data.docUrl)}" target="_blank" rel="noopener">Google Doc öffnen</a><a href="${escapeHtml(data.pdfUrl)}" target="_blank" rel="noopener">Als PDF herunterladen</a>`;
+    await loadContractDetails();
+    renderContractsBrowser();
+  } catch (e) {
+    statusEl.textContent = "Fehler bei der Vertragserstellung: " + e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
