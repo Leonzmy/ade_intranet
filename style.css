@@ -32,7 +32,28 @@ body {
 
 .app-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.topbar-slim {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.topbar-slim span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
 }
 
 .sidebar {
@@ -42,9 +63,6 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
-  height: 100vh;
 }
 
 .sidebar-header { padding: 20px 16px 0; }
