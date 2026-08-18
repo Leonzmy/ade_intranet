@@ -385,12 +385,16 @@ async function updateTaskStatus(rowIndex, done) {
   }
 }
 
+function buildNoteLine(author, text) {
+  const safeText = text.trim().replace(/\|/g, "/").replace(/\n/g, " ");
+  return `${new Date().toISOString()}|${author}|${safeText}`;
+}
+
 async function addNote(rowIndex, text) {
   const t = tasks.find((x) => x.rowIndex === rowIndex);
   if (!t) return;
   const author = userEmail || "unbekannt";
-  const safeText = text.replace(/\|/g, "/").replace(/\n/g, " ");
-  const line = `${new Date().toISOString()}|${author}|${safeText}`;
+  const line = buildNoteLine(author, text);
   const newRaw = t.notesRaw ? t.notesRaw + "\n" + line : line;
 
   const range = sheetRange(`J${rowIndex}`);
@@ -416,6 +420,7 @@ async function handleNewTask(e) {
   const festival = (form.festival.value || CONFIG.DEFAULT_FESTIVAL || "").trim();
   const assigneeName = form.assigneeName.value.trim();
   const due = form.due.value;
+  const initialNote = form.notes.value.trim();
 
   if (!title || !due) {
     setStatus("Titel und Deadline sind Pflichtfelder.", true);
@@ -423,6 +428,7 @@ async function handleNewTask(e) {
   }
 
   const newId = String(Date.now()).slice(-6);
+  const notesValue = initialNote ? buildNoteLine(userEmail || "unbekannt", initialNote) : "";
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${sheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
 
   try {
@@ -430,7 +436,7 @@ async function handleNewTask(e) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", ""]],
+        values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", notesValue]],
       }),
     });
     form.reset();
