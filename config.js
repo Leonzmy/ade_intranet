@@ -53,7 +53,7 @@ ADMIN_KEY: "ade19-intern-9f3k2m",
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
   // Für einen gemeinsamen Festival-Kalender: die Kalender-ID aus den
   // Google-Kalender-Einstellungen (Format: xxxxx@group.calendar.google.com)
-  CALENDAR_ID: "primary",
+  CALENDAR_ID: "673c6c39e61d10b755138292a265a1aed28e468686a843445190abeb8063ec50@group.calendar.google.com",
 
   // Vorbelegter Wert im "Neue Aufgabe"-Formular für das Festival-Feld
   DEFAULT_FESTIVAL: "ade #19",
