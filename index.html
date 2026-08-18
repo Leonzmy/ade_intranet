@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -194,13 +194,16 @@
             <input type="checkbox" id="rider-done-checkbox" />
             Rider ist fertig zusammengestellt
           </label>
-          <button type="button" id="rider-csv-btn" class="btn"><i class="ti ti-download"></i> CSV herunterladen</button>
+          <div class="modal-footer-actions">
+            <button type="button" id="rider-book-btn" class="btn primary"><i class="ti ti-plus"></i> Buchen</button>
+            <button type="button" id="rider-csv-btn" class="btn"><i class="ti ti-download"></i> CSV</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
