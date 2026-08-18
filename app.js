@@ -118,6 +118,14 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   bindClick(els.contractModalClose, closeContractModal);
   bindClick(els.contractGenerateBtn, handleGenerateContract);
+  bindClick(document.getElementById("bio-modal-close"), closeBioModal);
+  bindClick(document.getElementById("programmtext-save"), saveProgrammtext);
+  const bioModalEl = document.getElementById("bio-modal");
+  if (bioModalEl) {
+    bioModalEl.addEventListener("click", (e) => {
+      if (e.target === bioModalEl) closeBioModal();
+    });
+  }
   const contractModalEl = document.getElementById("contract-modal");
   if (contractModalEl) {
     contractModalEl.addEventListener("click", (e) => {
@@ -202,6 +210,8 @@ async function enterApp() {
   await syncContacts();
   await loadContractTemplates();
   await loadContractDetails();
+  await loadProgrammheft();
+  await syncProgrammheft();
   await syncRiderStatuses();
   await syncDeadlinesToCalendar();
   await loadCalendar();
@@ -651,6 +661,7 @@ function switchView(view) {
   if (view === "inventory") renderInventory();
   if (view === "contacts") renderContacts();
   if (view === "contracts") { renderTemplates(); renderContractsBrowser(); }
+  if (view === "programmheft") renderProgrammheft();
 }
 
 function renderDashboard() {
@@ -2045,5 +2056,229 @@ async function handleGenerateContract() {
     statusEl.textContent = "Fehler bei der Vertragserstellung: " + e.message;
   } finally {
     btn.disabled = false;
+  }
+}
+
+// ---------- Programmheft ----------
+
+let programmheftData = []; // [{rowIndex, name, role, events, bio, photoUrl, updatedAt, token}]
+let programmtext = "";
+
+function programmheftSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.PROGRAMMHEFT_SHEET_NAME)}!${a1}`;
+}
+
+function programmtextSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.PROGRAMMTEXT_SHEET_NAME)}!${a1}`;
+}
+
+async function loadProgrammheft() {
+  try {
+    const phUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmheftSheetRange("A2:G500")}`;
+    const ptUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmtextSheetRange("A2")}`;
+    const [phData, ptData] = await Promise.all([apiFetch(phUrl), apiFetch(ptUrl)]);
+
+    programmheftData = (phData.values || [])
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        name: r[0],
+        role: r[1] || "",
+        events: r[2] || "",
+        bio: r[3] || "",
+        photoUrl: r[4] || "",
+        updatedAt: r[5] || "",
+        token: r[6] || "",
+      }))
+      .filter((p) => p.name);
+
+    programmtext = ptData.values?.[0]?.[0] || "";
+  } catch (e) {
+    setStatus("Programmheft-Daten konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+// Baut aus den Events die Soll-Liste: alle Personen/Ensembles je Event
+function desiredProgrammheftEntries() {
+  const map = new Map();
+  eventsData.forEach((ev) => {
+    PEOPLE_ROLES.forEach((r) => {
+      (ev[r.key] || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => {
+        if (!map.has(name)) map.set(name, { roles: new Set(), events: new Set() });
+        map.get(name).roles.add(r.label);
+        map.get(name).events.add(ev.project);
+      });
+    });
+  });
+  return map;
+}
+
+async function syncProgrammheft() {
+  const desired = desiredProgrammheftEntries();
+
+  for (const [name, info] of desired.entries()) {
+    const roleStr = Array.from(info.roles).join(", ");
+    const eventsStr = Array.from(info.events).join(", ");
+    const existing = programmheftData.find((p) => p.name === name);
+
+    if (!existing) {
+      const token = genToken();
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmheftSheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+      try {
+        const resp = await apiFetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", token]] }),
+        });
+        const updatedRange = resp?.updates?.updatedRange || "";
+        const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+        const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+        programmheftData.push({
+          rowIndex: newRowIndex, name, role: roleStr, events: eventsStr,
+          bio: "", photoUrl: "", updatedAt: "", token,
+        });
+      } catch (e) {
+        // einzelne Fehlschläge nicht den ganzen Sync abbrechen lassen
+      }
+    } else if (existing.role !== roleStr || existing.events !== eventsStr) {
+      const range = programmheftSheetRange(`B${existing.rowIndex}:C${existing.rowIndex}`);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+      try {
+        await apiFetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values: [[roleStr, eventsStr]] }),
+        });
+      } catch (e) {
+        // lokal trotzdem aktualisieren
+      }
+      existing.role = roleStr;
+      existing.events = eventsStr;
+    }
+  }
+}
+
+function renderProgrammheft() {
+  const textEl = document.getElementById("programmtext-input");
+  if (textEl && document.activeElement !== textEl) textEl.value = programmtext;
+
+  const container = document.getElementById("programmheft-list");
+  if (!container) return;
+
+  if (eventsData.length === 0) {
+    container.innerHTML = `<div class="empty">Keine Events vorhanden.</div>`;
+    return;
+  }
+
+  container.innerHTML = eventsData
+    .map((ev) => {
+      const rows = [];
+      PEOPLE_ROLES.forEach((r) => {
+        (ev[r.key] || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((name) => {
+          const entry = programmheftData.find((p) => p.name === name);
+          const hasBio = !!(entry && entry.bio);
+          const hasPhoto = !!(entry && entry.photoUrl);
+          const rowIdx = entry ? entry.rowIndex : "";
+          rows.push(`<div class="ph-person-row">
+            <div class="ph-person-main">
+              <div class="ph-person-name">${escapeHtml(name)}</div>
+              <div class="ph-person-role">${escapeHtml(r.label)}</div>
+            </div>
+            <span class="ph-badge ${hasBio ? "ok" : "missing"}" ${hasBio ? `data-bio-row="${rowIdx}"` : ""}>Bio: ${hasBio ? "vorhanden" : "fehlt"}</span>
+            <span class="ph-badge ${hasPhoto ? "ok" : "missing"}" ${hasPhoto ? `data-photo-row="${rowIdx}"` : ""}>Foto: ${hasPhoto ? "vorhanden" : "fehlt"}</span>
+            <button type="button" class="ph-link-btn" data-ph-link="${rowIdx}" title="Formular-Link kopieren"><i class="ti ti-link"></i></button>
+          </div>`);
+        });
+      });
+
+      const body = rows.length
+        ? rows.join("")
+        : `<div class="empty">Noch keine Beteiligten bei diesem Event eingetragen.</div>`;
+
+      return `<details class="ph-event-group">
+        <summary class="ph-event-header">${escapeHtml(ev.project)} <span class="contract-count">${rows.length}</span></summary>
+        <div class="ph-event-body">${body}</div>
+      </details>`;
+    })
+    .join("");
+
+  container.querySelectorAll("[data-bio-row]").forEach((el) => {
+    el.addEventListener("click", () => openBioModal(parseInt(el.dataset.bioRow, 10)));
+  });
+
+  container.querySelectorAll("[data-photo-row]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const entry = programmheftData.find((p) => p.rowIndex === parseInt(el.dataset.photoRow, 10));
+      if (entry && entry.photoUrl) window.open(entry.photoUrl, "_blank", "noopener");
+    });
+  });
+
+  container.querySelectorAll("[data-ph-link]").forEach((btn) => {
+    btn.addEventListener("click", () => copyProgrammheftLink(parseInt(btn.dataset.phLink, 10)));
+  });
+}
+
+function openBioModal(rowIndex) {
+  const entry = programmheftData.find((p) => p.rowIndex === rowIndex);
+  if (!entry) return;
+  document.getElementById("bio-modal-title").textContent = entry.name;
+  const photoEl = document.getElementById("bio-modal-photo");
+  photoEl.innerHTML = entry.photoUrl
+    ? `<a href="${escapeHtml(entry.photoUrl)}" target="_blank" rel="noopener">Foto in Drive öffnen</a>`
+    : "";
+  document.getElementById("bio-modal-text").textContent = entry.bio || "Keine Bio hinterlegt.";
+  document.getElementById("bio-modal").classList.remove("hidden");
+}
+
+function closeBioModal() {
+  document.getElementById("bio-modal").classList.add("hidden");
+}
+
+async function copyProgrammheftLink(rowIndex) {
+  const entry = programmheftData.find((p) => p.rowIndex === rowIndex);
+  if (!entry) return;
+
+  if (!entry.token) {
+    const newToken = genToken();
+    const range = programmheftSheetRange(`G${rowIndex}`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+    try {
+      await apiFetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[newToken]] }),
+      });
+      entry.token = newToken;
+    } catch (e) {
+      setStatus("Zugriffsschlüssel konnte nicht erzeugt werden: " + e.message, true);
+      return;
+    }
+  }
+
+  const link = `${CONFIG.PROGRAMMHEFT_FORM_URL}?row=${entry.rowIndex}&token=${encodeURIComponent(entry.token)}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    setStatus(`Link für ${entry.name} kopiert — einfach einfügen und verschicken.`);
+  } catch (e) {
+    window.prompt("Link kopieren (Strg+C):", link);
+  }
+}
+
+async function saveProgrammtext() {
+  const textEl = document.getElementById("programmtext-input");
+  const statusEl = document.getElementById("programmtext-status");
+  if (!textEl) return;
+  const value = textEl.value;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmtextSheetRange("A2")}?valueInputOption=RAW`;
+  try {
+    statusEl.textContent = "Wird gespeichert…";
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    programmtext = value;
+    statusEl.textContent = "Gespeichert.";
+  } catch (e) {
+    statusEl.textContent = "Fehler beim Speichern: " + e.message;
   }
 }
