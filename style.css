@@ -272,7 +272,7 @@ details summary {
 }
 
 .new-task-form .row { display: flex; gap: 8px; }
-.new-task-form .row > * { flex: 1; }
+.new-task-form .row > * { flex: 1; min-width: 0; width: 100%; }
 
 .status-msg {
   font-size: 13px;
