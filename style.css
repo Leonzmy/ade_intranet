@@ -36,6 +36,31 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.festival-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.badge-divider { color: var(--text-muted); margin: 0 2px; }
+
+.badge-urgent {
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .topbar h1 {
   font-size: 18px;
   font-weight: 600;
