@@ -1,17 +1,18 @@
 :root {
-  --bg: #1c1c1a;
-  --surface: #262624;
-  --surface-2: #2f2f2c;
-  --border: #3d3d39;
-  --text: #f2f0e8;
-  --text-secondary: #a8a69c;
-  --text-muted: #706e64;
-  --accent: #f4d35e;
-  --danger: #e0654f;
-  --danger-bg: #3a231d;
-  --warning: #f4d35e;
-  --warning-bg: #3a341e;
-  --neutral-bg: #2f2f2c;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f6f7;
+  --border: #e5e5e7;
+  --text: #1a1a1a;
+  --text-secondary: #68686c;
+  --text-muted: #9a9a9e;
+  --accent: #d6293e;
+  --accent-text: #ffffff;
+  --danger: #b0182b;
+  --danger-bg: #fbe7ea;
+  --warning: #b5650a;
+  --warning-bg: #fdf1e2;
+  --neutral-bg: #f0f0f1;
   --radius: 8px;
   --font: "IBM Plex Sans", -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
@@ -22,7 +23,7 @@
 body {
   margin: 0;
   font-family: var(--font);
-  background: var(--bg);
+  background: var(--neutral-bg);
   color: var(--text);
   min-height: 100vh;
 }
@@ -81,7 +82,7 @@ body {
 
 .btn.primary {
   background: var(--accent);
-  color: #26210a;
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 
@@ -167,6 +168,7 @@ main {
   border-radius: var(--radius);
   margin-bottom: 8px;
   background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .task input[type="checkbox"] {
