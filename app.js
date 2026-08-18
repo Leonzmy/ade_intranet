@@ -1128,10 +1128,24 @@ async function updateContactField(rowIndex, field, value) {
 async function copyContactLink(rowIndex) {
   const c = contactsData.find((x) => x.rowIndex === rowIndex);
   if (!c) return;
+
   if (!c.token) {
-    setStatus("Kein Zugriffsschlüssel für diesen Kontakt vorhanden — Seite neu laden und erneut versuchen.", true);
-    return;
+    const newToken = genToken();
+    const range = contactsSheetRange(`G${rowIndex}`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+    try {
+      await apiFetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[newToken]] }),
+      });
+      c.token = newToken;
+    } catch (e) {
+      setStatus("Zugriffsschlüssel konnte nicht erzeugt werden: " + e.message, true);
+      return;
+    }
   }
+
   const link = `${CONFIG.PUBLIC_FORM_URL}?row=${c.rowIndex}&token=${encodeURIComponent(c.token)}`;
   try {
     await navigator.clipboard.writeText(link);
