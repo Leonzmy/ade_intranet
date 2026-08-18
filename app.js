@@ -32,6 +32,7 @@ let projectList = [];   // ["Marketing", ...]
 let festivalList = [];  // ["ade #19", ...]
 let calViewMode = "month"; // "month" | "week"
 let calAnchor = new Date(); // Referenzdatum für aktuelle Ansicht
+let lastCalendarEvents = [];
 
 const els = {};
 
@@ -74,10 +75,10 @@ window.addEventListener("DOMContentLoaded", () => {
   els.status = document.getElementById("status-msg");
   els.btnMine = document.getElementById("filter-mine");
   els.btnAll = document.getElementById("filter-all");
-  els.tabTasks = document.getElementById("tab-tasks");
-  els.tabCalendar = document.getElementById("tab-calendar");
-  els.viewTasks = document.getElementById("view-tasks");
-  els.viewCalendar = document.getElementById("view-calendar");
+  els.navItems = document.querySelectorAll(".nav-item");
+  els.views = document.querySelectorAll(".view");
+  els.dashboardStats = document.getElementById("dashboard-stats");
+  els.dashboardUpcoming = document.getElementById("dashboard-upcoming");
   els.newTaskForm = document.getElementById("new-task-form");
   els.projectSelect = document.getElementById("project-select");
   els.festivalSelect = document.getElementById("festival-select");
@@ -104,8 +105,9 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.logoutBtn, handleLogout);
   bindClick(els.btnMine, () => setFilter(true));
   bindClick(els.btnAll, () => setFilter(false));
-  bindClick(els.tabTasks, () => switchTab("tasks"));
-  bindClick(els.tabCalendar, () => switchTab("calendar"));
+  els.navItems.forEach((btn) => {
+    btn.addEventListener("click", () => switchView(btn.dataset.view));
+  });
   bindSubmit(els.newTaskForm, handleNewTask);
 
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -163,6 +165,7 @@ async function enterApp() {
   await loadTasks();
   await syncDeadlinesToCalendar();
   await loadCalendar();
+  renderDashboard();
   setStatus("");
 }
 
@@ -421,6 +424,10 @@ async function loadCalendar() {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${rangeStart.toISOString()}&timeMax=${rangeEnd.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=250`;
     const data = await apiFetch(url);
     const events = data.items || [];
+    lastCalendarEvents = events.filter((ev) => {
+      const raw = ev.start.dateTime || ev.start.date;
+      return new Date(raw) >= new Date(new Date().toDateString());
+    });
     if (calViewMode === "month") {
       renderMonthGrid(rangeStart, events);
     } else {
@@ -592,11 +599,42 @@ function setFilter(mine) {
   renderTasks();
 }
 
-function switchTab(tab) {
-  els.tabTasks.classList.toggle("active", tab === "tasks");
-  els.tabCalendar.classList.toggle("active", tab === "calendar");
-  els.viewTasks.classList.toggle("hidden", tab !== "tasks");
-  els.viewCalendar.classList.toggle("hidden", tab !== "calendar");
+function switchView(view) {
+  els.navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
+  els.views.forEach((v) => v.classList.toggle("hidden", v.id !== `view-${view}`));
+  if (view === "dashboard") renderDashboard();
+}
+
+function renderDashboard() {
+  const mine = tasks.filter((t) => t.assigneeEmail === (userEmail || "").toLowerCase());
+  const open = mine.filter((t) => t.status !== "erledigt");
+  const overdue = open.filter((t) => urgencyOf(t.due) === "overdue").length;
+  const week = open.filter((t) => urgencyOf(t.due) === "week").length;
+  const later = open.filter((t) => urgencyOf(t.due) === "later").length;
+
+  els.dashboardStats.innerHTML = `
+    <div class="dashboard-stat overdue"><div class="num">${overdue}</div><div class="label">Überfällig</div></div>
+    <div class="dashboard-stat week"><div class="num">${week}</div><div class="label">Diese Woche</div></div>
+    <div class="dashboard-stat"><div class="num">${later}</div><div class="label">Später</div></div>
+  `;
+
+  const upcoming = (lastCalendarEvents || [])
+    .filter((ev) => !isDeadlineEvent(ev))
+    .slice(0, 5);
+
+  els.dashboardUpcoming.innerHTML = upcoming.length
+    ? upcoming
+        .map((ev) => {
+          const raw = ev.start.dateTime || ev.start.date;
+          const d = new Date(raw);
+          const dateLabel = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+          const timeLabel = ev.start.dateTime
+            ? d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+            : "ganztägig";
+          return `<div class="event"><div class="event-date">${dateLabel}<br>${timeLabel}</div><div class="event-title">${escapeHtml(ev.summary || "(ohne Titel)")}</div></div>`;
+        })
+        .join("")
+    : `<div class="empty">Keine anstehenden Termine im aktuellen Monat.</div>`;
 }
 
 function renderTasks() {
