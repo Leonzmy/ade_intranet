@@ -113,7 +113,9 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  tokenClient.requestAccessToken({ prompt: "" });
+  // Kein automatischer Login-Versuch mehr beim Laden — Browser blockieren
+  // Popups grundsätzlich, wenn sie nicht direkt aus einem Klick ausgelöst
+  // werden. Der Login-Bildschirm mit dem Button bleibt einfach sichtbar.
 });
 
 function handleLogin() {
