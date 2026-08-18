@@ -30,7 +30,7 @@ const CONFIG = {
   PUBLIC_FORM_URL: "https://leonzmy.github.io/ade_intranet/kontakt-formular.html",
 
     // Dieselbe Apps-Script-Web-App-URL wie in kontakt-formular.html (WEBAPP_URL)
-  WEBAPP_URL: "https://script.google.com/macros/s/AKfycbzohN2Ox1UMYQgh_Dg7wRATt1skan3BKdnFLl48N9Bx61snnXcvCRJ6nYoL1TzvjWsBOg/exec",
+  WEBAPP_URL: "https://script.google.com/macros/s/AKfycbze_cznSBGxLf3Ms00__NS6Hv-w9_v7I-UsP4CQwyRIUakWVuIsD8ixXZxIZ9re77us/exec",
 
     // Programmheft
   PROGRAMMHEFT_SHEET_NAME: "Programmheft",
