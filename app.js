@@ -17,7 +17,7 @@
 
 const SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");
 
@@ -30,6 +30,8 @@ let expandedRow = null;
 let peopleList = [];    // [{name, kuerzel, email}]
 let projectList = [];   // ["Marketing", ...]
 let festivalList = [];  // ["ade #19", ...]
+let calViewMode = "month"; // "month" | "week"
+let calAnchor = new Date(); // Referenzdatum für aktuelle Ansicht
 
 const els = {};
 
@@ -72,7 +74,23 @@ window.addEventListener("DOMContentLoaded", () => {
   els.projectSelect = document.getElementById("project-select");
   els.festivalSelect = document.getElementById("festival-select");
   els.assigneeSelect = document.getElementById("assignee-select");
-  els.calendarList = document.getElementById("calendar-list");
+  els.calGrid = document.getElementById("calendar-grid");
+  els.calLabel = document.getElementById("cal-label");
+  els.calPrev = document.getElementById("cal-prev");
+  els.calNext = document.getElementById("cal-next");
+  els.calToday = document.getElementById("cal-today");
+  els.calViewMonth = document.getElementById("cal-view-month");
+  els.calViewWeek = document.getElementById("cal-view-week");
+  els.calNewEventBtn = document.getElementById("cal-new-event-btn");
+  els.newEventForm = document.getElementById("new-event-form");
+
+  els.calPrev.addEventListener("click", () => shiftCalendar(-1));
+  els.calNext.addEventListener("click", () => shiftCalendar(1));
+  els.calToday.addEventListener("click", () => { calAnchor = new Date(); loadCalendar(); });
+  els.calViewMonth.addEventListener("click", () => setCalView("month"));
+  els.calViewWeek.addEventListener("click", () => setCalView("week"));
+  els.calNewEventBtn.addEventListener("click", () => els.newEventForm.classList.toggle("hidden"));
+  els.newEventForm.addEventListener("submit", handleNewEvent);
 
   els.loginBtn.addEventListener("click", handleLogin);
   els.logoutBtn.addEventListener("click", handleLogout);
@@ -133,6 +151,7 @@ async function enterApp() {
   els.userLabel.textContent = userEmail || "";
   await loadStammdaten();
   await loadTasks();
+  await syncDeadlinesToCalendar();
   await loadCalendar();
   setStatus("");
 }
@@ -239,15 +258,296 @@ async function loadTasks() {
   }
 }
 
-async function loadCalendar() {
+// ---------- Deadline-Synchronisation ----------
+
+function addDaysStr(dateStr, n) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+async function syncDeadlinesToCalendar() {
   try {
-    const timeMin = new Date().toISOString();
     const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
-    const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&singleEvents=true&orderBy=startTime&maxResults=15`;
-    const data = await apiFetch(url);
-    renderCalendar(data.items || []);
+    const listUrl = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?privateExtendedProperty=fdSource%3Ddeadline&maxResults=250&singleEvents=true`;
+    const data = await apiFetch(listUrl);
+    const existingByTaskId = {};
+    (data.items || []).forEach((ev) => {
+      const tid = ev.extendedProperties?.private?.fdTaskId;
+      if (tid) existingByTaskId[tid] = ev;
+    });
+
+    for (const t of tasks) {
+      const existing = existingByTaskId[t.id];
+      const isDone = t.status === "erledigt";
+
+      if (!t.due || isDone) {
+        if (existing) {
+          await apiFetch(
+            `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${existing.id}`,
+            { method: "DELETE" }
+          );
+        }
+        if (existing) delete existingByTaskId[t.id];
+        continue;
+      }
+
+      const desiredSummary = `⏰ ${t.title}`;
+      const desiredStart = t.due;
+      const desiredEnd = addDaysStr(t.due, 1);
+
+      if (!existing) {
+        await apiFetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary: desiredSummary,
+            start: { date: desiredStart },
+            end: { date: desiredEnd },
+            extendedProperties: { private: { fdSource: "deadline", fdTaskId: String(t.id) } },
+          }),
+        });
+      } else {
+        const changed = existing.summary !== desiredSummary || existing.start?.date !== desiredStart;
+        if (changed) {
+          await apiFetch(
+            `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${existing.id}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                summary: desiredSummary,
+                start: { date: desiredStart },
+                end: { date: desiredEnd },
+              }),
+            }
+          );
+        }
+        delete existingByTaskId[t.id];
+      }
+    }
+
+    // Übrig gebliebene Deadline-Events gehören zu Aufgaben, die es nicht mehr gibt
+    for (const tid of Object.keys(existingByTaskId)) {
+      await apiFetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${existingByTaskId[tid].id}`,
+        { method: "DELETE" }
+      );
+    }
   } catch (e) {
-    els.calendarList.innerHTML = `<div class="empty">Kalender konnte nicht geladen werden: ${e.message}</div>`;
+    setStatus("Deadlines konnten nicht mit dem Kalender synchronisiert werden: " + e.message, true);
+  }
+}
+
+// ---------- Kalenderansicht ----------
+
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = (d.getDay() + 6) % 7; // Montag = 0
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function dateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function isSameDay(a, b) {
+  return dateKey(a) === dateKey(b);
+}
+
+function eventDateKey(ev) {
+  const raw = ev.start.date || ev.start.dateTime;
+  return raw.slice(0, 10);
+}
+
+function isDeadlineEvent(ev) {
+  return ev.extendedProperties?.private?.fdSource === "deadline";
+}
+
+function setCalView(mode) {
+  calViewMode = mode;
+  els.calViewMonth.classList.toggle("active", mode === "month");
+  els.calViewWeek.classList.toggle("active", mode === "week");
+  loadCalendar();
+}
+
+function shiftCalendar(dir) {
+  if (calViewMode === "month") {
+    calAnchor = new Date(calAnchor.getFullYear(), calAnchor.getMonth() + dir, 1);
+  } else {
+    calAnchor = addDays(calAnchor, dir * 7);
+  }
+  loadCalendar();
+}
+
+async function loadCalendar() {
+  const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
+  let rangeStart, rangeEnd;
+
+  if (calViewMode === "month") {
+    const firstOfMonth = new Date(calAnchor.getFullYear(), calAnchor.getMonth(), 1);
+    rangeStart = startOfWeek(firstOfMonth);
+    rangeEnd = addDays(rangeStart, 42);
+    els.calLabel.textContent = calAnchor.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  } else {
+    rangeStart = startOfWeek(calAnchor);
+    rangeEnd = addDays(rangeStart, 7);
+    const rangeEndLabel = addDays(rangeStart, 6);
+    els.calLabel.textContent =
+      rangeStart.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) +
+      " – " +
+      rangeEndLabel.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  try {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${rangeStart.toISOString()}&timeMax=${rangeEnd.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=250`;
+    const data = await apiFetch(url);
+    const events = data.items || [];
+    if (calViewMode === "month") {
+      renderMonthGrid(rangeStart, events);
+    } else {
+      renderWeekGrid(rangeStart, events);
+    }
+  } catch (e) {
+    els.calGrid.innerHTML = `<div class="empty">Kalender konnte nicht geladen werden: ${e.message}</div>`;
+  }
+}
+
+function renderMonthGrid(gridStart, events) {
+  const eventsByDay = {};
+  events.forEach((ev) => {
+    const key = eventDateKey(ev);
+    (eventsByDay[key] = eventsByDay[key] || []).push(ev);
+  });
+
+  const weekdayLabels = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const today = new Date();
+  const currentMonth = calAnchor.getMonth();
+
+  let html = weekdayLabels.map((l) => `<div class="cal-weekday-label">${l}</div>`).join("");
+
+  for (let i = 0; i < 42; i++) {
+    const day = addDays(gridStart, i);
+    const key = dateKey(day);
+    const dayEvents = eventsByDay[key] || [];
+    const outside = day.getMonth() !== currentMonth;
+    const isToday = isSameDay(day, today);
+
+    const shown = dayEvents.slice(0, 3);
+    const extra = dayEvents.length - shown.length;
+
+    const chips = shown
+      .map((ev) => {
+        const cls = isDeadlineEvent(ev) ? "" : "is-event";
+        return `<div class="cal-chip ${cls}" title="${escapeHtml(ev.summary || "")}">${escapeHtml(ev.summary || "(ohne Titel)")}</div>`;
+      })
+      .join("");
+    const more = extra > 0 ? `<div class="cal-chip-more">+${extra} mehr</div>` : "";
+
+    html += `<div class="cal-day ${outside ? "outside" : ""} ${isToday ? "today" : ""}">
+      <div class="cal-day-num">${day.getDate()}</div>
+      ${chips}${more}
+    </div>`;
+  }
+
+  els.calGrid.innerHTML = `<div class="cal-month-grid">${html}</div>`;
+}
+
+function renderWeekGrid(weekStart, events) {
+  const eventsByDay = {};
+  events.forEach((ev) => {
+    const key = eventDateKey(ev);
+    (eventsByDay[key] = eventsByDay[key] || []).push(ev);
+  });
+
+  const today = new Date();
+  let html = "";
+
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(weekStart, i);
+    const key = dateKey(day);
+    const dayEvents = (eventsByDay[key] || []).sort((a, b) =>
+      (a.start.dateTime || a.start.date).localeCompare(b.start.dateTime || b.start.date)
+    );
+    const isToday = isSameDay(day, today);
+    const label = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+
+    const items = dayEvents
+      .map((ev) => {
+        const isDeadline = isDeadlineEvent(ev);
+        const time = ev.start.dateTime
+          ? new Date(ev.start.dateTime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+          : "ganztägig";
+        return `<div class="cal-week-event ${isDeadline ? "is-deadline" : ""}">
+          <span class="cal-week-event-time">${time}</span>
+          ${escapeHtml(ev.summary || "(ohne Titel)")}
+        </div>`;
+      })
+      .join("");
+
+    html += `<div class="cal-week-day ${isToday ? "today" : ""}">
+      <div class="cal-week-day-header">${label}</div>
+      ${items || '<div class="notes-empty">Keine Termine.</div>'}
+    </div>`;
+  }
+
+  els.calGrid.innerHTML = `<div class="cal-week-grid">${html}</div>`;
+}
+
+async function handleNewEvent(e) {
+  e.preventDefault();
+  const form = e.target;
+  const title = form.title.value.trim();
+  const date = form.date.value;
+  const time = form.time.value;
+
+  if (!title || !date) {
+    setStatus("Titel und Datum sind Pflichtfelder für einen Termin.", true);
+    return;
+  }
+
+  const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
+  let body;
+  if (time) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const startDateTime = `${date}T${time}:00`;
+    const [h, m] = time.split(":").map(Number);
+    const endDate = new Date(`${date}T${time}:00`);
+    endDate.setHours(endDate.getHours() + 1);
+    const endDateTime = endDate.toISOString().slice(0, 19);
+    body = {
+      summary: title,
+      start: { dateTime: startDateTime, timeZone: tz },
+      end: { dateTime: endDateTime, timeZone: tz },
+    };
+  } else {
+    body = {
+      summary: title,
+      start: { date: date },
+      end: { date: addDaysStr(date, 1) },
+    };
+  }
+
+  try {
+    await apiFetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    form.reset();
+    els.newEventForm.classList.add("hidden");
+    setStatus("Termin gespeichert.");
+    await loadCalendar();
+  } catch (e) {
+    setStatus("Termin konnte nicht gespeichert werden: " + e.message, true);
   }
 }
 
@@ -476,46 +776,39 @@ async function handleNewTask(e) {
 
   const newId = String(Date.now()).slice(-6);
   const notesValue = initialNote ? buildNoteLine(userEmail || "unbekannt", initialNote) : "";
-  const matchedPerson = peopleList.find((p) => p.name === assigneeName);
-  const kuerzel = matchedPerson?.kuerzel || "";
-  const email = matchedPerson?.email || "";
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${sheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
 
   try {
-    await apiFetch(url, {
+    const appendResp = await apiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        values: [[newId, title, project, festival, assigneeName, kuerzel, email, due, "offen", notesValue]],
+        values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", notesValue]],
       }),
     });
+
+    // Kürzel/Email nachträglich als Formel setzen (zuverlässiger als
+    // clientseitige Namens-Zuordnung, funktioniert genau wie im Sheet selbst)
+    const updatedRange = appendResp?.updates?.updatedRange || "";
+    const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+    const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+    if (newRowIndex) {
+      const kuerzelFormula = `=IFERROR(INDEX(Stammdaten!$B$2:$B$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
+      const emailFormula = `=IFERROR(INDEX(Stammdaten!$C$2:$C$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
+      const formulaRange = sheetRange(`F${newRowIndex}:G${newRowIndex}`);
+      const formulaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${formulaRange}?valueInputOption=USER_ENTERED`;
+      await apiFetch(formulaUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[kuerzelFormula, emailFormula]] }),
+      });
+    }
     form.reset();
     setStatus("Aufgabe hinzugefügt.");
     await loadTasks();
   } catch (e) {
     setStatus("Aufgabe konnte nicht angelegt werden: " + e.message, true);
   }
-}
-
-function renderCalendar(events) {
-  if (events.length === 0) {
-    els.calendarList.innerHTML = `<div class="empty">Keine anstehenden Termine.</div>`;
-    return;
-  }
-  els.calendarList.innerHTML = events
-    .map((ev) => {
-      const start = ev.start.dateTime || ev.start.date;
-      const d = new Date(start);
-      const dateLabel = d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
-      const timeLabel = ev.start.dateTime
-        ? d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
-        : "ganztägig";
-      return `<div class="event">
-        <div class="event-date">${dateLabel}<br>${timeLabel}</div>
-        <div class="event-title">${escapeHtml(ev.summary || "(ohne Titel)")}</div>
-      </div>`;
-    })
-    .join("");
 }
 
 function setStatus(msg, isError) {
