@@ -80,6 +80,7 @@ window.addEventListener("DOMContentLoaded", () => {
   els.dashboardStats = document.getElementById("dashboard-stats");
   els.dashboardUpcoming = document.getElementById("dashboard-upcoming");
   els.newTaskForm = document.getElementById("new-task-form");
+  els.newNeedForm = document.getElementById("new-need-form");
   els.projectSelect = document.getElementById("project-select");
   els.festivalSelect = document.getElementById("festival-select");
   els.assigneeSelect = document.getElementById("assignee-select");
@@ -111,6 +112,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const dashCalCard = document.getElementById("dashboard-calendar-card");
   if (dashCalCard) dashCalCard.addEventListener("click", () => switchView("calendar"));
   bindSubmit(els.newTaskForm, handleNewTask);
+  bindSubmit(els.newNeedForm, handleNewNeed);
 
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.GOOGLE_CLIENT_ID,
@@ -166,6 +168,7 @@ async function enterApp() {
   await loadStammdaten();
   await loadTasks();
   await loadEvents();
+  await loadInventory();
   await syncDeadlinesToCalendar();
   await loadCalendar();
   renderDashboard();
@@ -611,6 +614,7 @@ function switchView(view) {
   els.views.forEach((v) => v.classList.toggle("hidden", v.id !== `view-${view}`));
   if (view === "dashboard") renderDashboard();
   if (view === "events") renderEvents();
+  if (view === "inventory") renderInventory();
 }
 
 function renderDashboard() {
@@ -846,6 +850,36 @@ async function addNote(rowIndex, text) {
   }
 }
 
+async function createTaskRow({ title, project, festival, assigneeName, due, initialNote }) {
+  const newId = String(Date.now()).slice(-6);
+  const notesValue = initialNote ? buildNoteLine(userEmail || "unbekannt", initialNote) : "";
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${sheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+
+  const appendResp = await apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", notesValue]],
+    }),
+  });
+
+  const updatedRange = appendResp?.updates?.updatedRange || "";
+  const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+  const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+  if (newRowIndex) {
+    const kuerzelFormula = `=IFERROR(INDEX(Stammdaten!$B$2:$B$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
+    const emailFormula = `=IFERROR(INDEX(Stammdaten!$C$2:$C$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
+    const formulaRange = sheetRange(`F${newRowIndex}:G${newRowIndex}`);
+    const formulaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${formulaRange}?valueInputOption=USER_ENTERED`;
+    await apiFetch(formulaUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[kuerzelFormula, emailFormula]] }),
+    });
+  }
+  return newRowIndex;
+}
+
 async function handleNewTask(e) {
   e.preventDefault();
   const form = e.target;
@@ -861,35 +895,8 @@ async function handleNewTask(e) {
     return;
   }
 
-  const newId = String(Date.now()).slice(-6);
-  const notesValue = initialNote ? buildNoteLine(userEmail || "unbekannt", initialNote) : "";
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${sheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
-
   try {
-    const appendResp = await apiFetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", notesValue]],
-      }),
-    });
-
-    // Kürzel/Email nachträglich als Formel setzen (zuverlässiger als
-    // clientseitige Namens-Zuordnung, funktioniert genau wie im Sheet selbst)
-    const updatedRange = appendResp?.updates?.updatedRange || "";
-    const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
-    const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
-    if (newRowIndex) {
-      const kuerzelFormula = `=IFERROR(INDEX(Stammdaten!$B$2:$B$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
-      const emailFormula = `=IFERROR(INDEX(Stammdaten!$C$2:$C$50,MATCH(TRIM(E${newRowIndex}),Stammdaten!$A$2:$A$50,0))&"","")`;
-      const formulaRange = sheetRange(`F${newRowIndex}:G${newRowIndex}`);
-      const formulaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${formulaRange}?valueInputOption=USER_ENTERED`;
-      await apiFetch(formulaUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ values: [[kuerzelFormula, emailFormula]] }),
-      });
-    }
+    await createTaskRow({ title, project, festival, assigneeName, due, initialNote });
     form.reset();
     setStatus("Aufgabe hinzugefügt.");
     await loadTasks();
@@ -910,15 +917,236 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;");
 }
 
+// ---------- Inventar ----------
+
+const NEED_PREFIX = "🔧 Technik: ";
+let inventoryItems = []; // [{name, category, stock, note}]
+let bookings = [];       // [{equipment, project, qty, note}]
+
+function invSheetRange(sheetName, a1) {
+  return `${encodeURIComponent(sheetName)}!${a1}`;
+}
+
+async function loadInventory() {
+  try {
+    const invUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${invSheetRange(CONFIG.INVENTORY_SHEET_NAME, "A2:D100")}`;
+    const bkUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${invSheetRange(CONFIG.BOOKINGS_SHEET_NAME, "A2:E200")}`;
+    const [invData, bkData] = await Promise.all([apiFetch(invUrl), apiFetch(bkUrl)]);
+
+    inventoryItems = (invData.values || [])
+      .filter((r) => r[0])
+      .map((r) => ({ name: r[0], category: r[1] || "", stock: parseFloat(r[2]) || 0, note: r[3] || "" }));
+
+    bookings = (bkData.values || [])
+      .filter((r) => r[0])
+      .map((r) => ({ equipment: r[0], project: r[1] || "", date: r[2] || "", qty: parseFloat(r[3]) || 0, note: r[4] || "" }));
+  } catch (e) {
+    setStatus("Inventar konnte nicht geladen werden: " + e.message, true);
+  }
+}
+
+function bookedQtyForDate(equipmentName, date) {
+  return bookings
+    .filter((b) => b.equipment === equipmentName && b.date === date)
+    .reduce((sum, b) => sum + b.qty, 0);
+}
+
+function eventProjectNames() {
+  return eventsData.length ? eventsData.map((e) => e.project) : projectList.filter((p) => p !== "Allgemeines" && p !== "Marketing");
+}
+
+function renderInventory() {
+  const container = document.getElementById("inventory-list");
+  if (!container) return;
+
+  const header = `<div class="inv-row inv-header">
+    <div class="inv-name">Equipment</div>
+    <div class="inv-cat">Kategorie</div>
+    <div class="inv-avail">Bestand</div>
+    <div style="width:70px"></div>
+  </div>`;
+
+  const rows = inventoryItems
+    .map((item, idx) => {
+      const projects = eventProjectNames();
+      const projectOptions = projects.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+
+      const itemBookings = bookings
+        .filter((b) => b.equipment === item.name)
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+
+      const bookingsList = itemBookings.length
+        ? itemBookings
+            .map((b) => {
+              const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "(kein Datum)";
+              return `<div class="inv-booking-entry">${dateLabel} · ${escapeHtml(b.project)} · ${b.qty}×</div>`;
+            })
+            .join("")
+        : `<div class="inv-booking-entry inv-booking-empty">Noch keine Buchungen.</div>`;
+
+      return `<div class="inv-row">
+          <div class="inv-name">${escapeHtml(item.name)}${item.note ? `<div class="inv-cat">${escapeHtml(item.note)}</div>` : ""}</div>
+          <div class="inv-cat">${escapeHtml(item.category)}</div>
+          <div class="inv-avail">${item.stock}</div>
+          <button type="button" class="btn inv-book-btn" data-idx="${idx}">Buchen</button>
+        </div>
+        <div class="inv-book-form" id="inv-book-form-${idx}">
+          <div class="inv-book-row">
+            <select id="inv-book-project-${idx}"><option value="">Event…</option>${projectOptions}</select>
+            <input type="date" id="inv-book-date-${idx}" />
+            <input type="number" id="inv-book-qty-${idx}" min="1" value="1" />
+            <button type="button" class="btn primary" data-confirm-idx="${idx}">Speichern</button>
+          </div>
+          <div class="inv-book-availability" id="inv-book-avail-${idx}">Datum wählen, um Verfügbarkeit zu sehen.</div>
+          <div class="inv-bookings-list">${bookingsList}</div>
+        </div>`;
+    })
+    .join("");
+
+  container.innerHTML = header + (rows || `<div class="inv-row">Noch keine Equipment-Einträge im Inventar-Blatt.</div>`);
+
+  container.querySelectorAll(".inv-book-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = btn.dataset.idx;
+      document.getElementById(`inv-book-form-${idx}`).classList.toggle("open");
+    });
+  });
+
+  inventoryItems.forEach((item, idx) => {
+    const projectSelect = document.getElementById(`inv-book-project-${idx}`);
+    const dateInput = document.getElementById(`inv-book-date-${idx}`);
+    const qtyInput = document.getElementById(`inv-book-qty-${idx}`);
+    const availEl = document.getElementById(`inv-book-avail-${idx}`);
+    const updateAvail = () => {
+      if (!dateInput.value) {
+        availEl.textContent = "Datum wählen, um Verfügbarkeit zu sehen.";
+        availEl.className = "inv-book-availability";
+        return;
+      }
+      const booked = bookedQtyForDate(item.name, dateInput.value);
+      const available = item.stock - booked;
+      const wanted = parseFloat(qtyInput.value) || 0;
+      const dateLabel = new Date(dateInput.value + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+      availEl.textContent = `Verfügbar am ${dateLabel}: ${available} von ${item.stock}${wanted > available ? " — nicht genug frei!" : ""}`;
+      availEl.className = "inv-book-availability" + (wanted > available ? " over" : "");
+    };
+    projectSelect.addEventListener("change", () => {
+      // Datum des gewählten Events automatisch als Vorschlag übernehmen,
+      // sofern noch kein eigenes Datum gesetzt wurde
+      const selectedEvent = eventsData.find((ev) => ev.project === projectSelect.value);
+      if (selectedEvent && selectedEvent.date && !dateInput.value) {
+        dateInput.value = selectedEvent.date;
+        updateAvail();
+      }
+    });
+    dateInput.addEventListener("change", updateAvail);
+    qtyInput.addEventListener("input", updateAvail);
+  });
+
+  container.querySelectorAll("[data-confirm-idx]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = btn.dataset.confirmIdx;
+      const item = inventoryItems[idx];
+      const project = document.getElementById(`inv-book-project-${idx}`).value;
+      const date = document.getElementById(`inv-book-date-${idx}`).value;
+      const qty = parseFloat(document.getElementById(`inv-book-qty-${idx}`).value) || 0;
+      if (!project || !date || qty <= 0) {
+        setStatus("Bitte Event, Datum und eine gültige Anzahl angeben.", true);
+        return;
+      }
+      const alreadyBooked = bookedQtyForDate(item.name, date);
+      if (qty > item.stock - alreadyBooked) {
+        setStatus("Nicht genug verfügbar an diesem Tag — Buchung wurde nicht gespeichert.", true);
+        return;
+      }
+      addBooking(item.name, project, date, qty);
+    });
+  });
+
+  renderNeeds();
+}
+
+async function addBooking(equipment, project, date, qty) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${invSheetRange(CONFIG.BOOKINGS_SHEET_NAME, "A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  try {
+    await apiFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[equipment, project, date, qty, ""]] }),
+    });
+    bookings.push({ equipment, project, date, qty, note: "" });
+    setStatus("Buchung gespeichert.");
+    renderInventory();
+  } catch (e) {
+    setStatus("Buchung konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+function renderNeeds() {
+  const projSelect = document.getElementById("need-project-select");
+  const assigneeSelect = document.getElementById("need-assignee-select");
+  if (projSelect) fillSelect(projSelect, eventProjectNames());
+  if (assigneeSelect) fillSelect(assigneeSelect, peopleList.map((p) => p.name));
+
+  const needsList = document.getElementById("needs-list");
+  if (!needsList) return;
+
+  const needs = tasks.filter((t) => t.title.startsWith(NEED_PREFIX) && t.status !== "erledigt");
+  needsList.innerHTML = needs.length
+    ? needs
+        .map(
+          (t) => `<div class="need-item">
+            <div>
+              <div class="title">${escapeHtml(t.title.replace(NEED_PREFIX, ""))}</div>
+              <div class="meta">${escapeHtml(t.project)} · ${escapeHtml(t.assigneeName || "niemand zugewiesen")}</div>
+            </div>
+            <div class="task-due ${urgencyOf(t.due)}">${formatDue(t.due, urgencyOf(t.due))}</div>
+          </div>`
+        )
+        .join("")
+    : `<div class="empty">Kein zusätzlicher Bedarf offen.</div>`;
+}
+
+async function handleNewNeed(e) {
+  e.preventDefault();
+  const form = e.target;
+  const title = form.title.value.trim();
+  const project = form.project.value;
+  const assigneeName = form.assigneeName.value;
+  const due = form.due.value;
+
+  if (!title || !due) {
+    setStatus("Titel und Deadline sind Pflichtfelder.", true);
+    return;
+  }
+
+  try {
+    await createTaskRow({
+      title: NEED_PREFIX + title,
+      project,
+      festival: CONFIG.DEFAULT_FESTIVAL || "",
+      assigneeName,
+      due,
+      initialNote: "",
+    });
+    form.reset();
+    setStatus("Bedarf angelegt — erscheint auch im Aufgaben-Reiter.");
+    await loadTasks();
+    renderNeeds();
+  } catch (e) {
+    setStatus("Bedarf konnte nicht angelegt werden: " + e.message, true);
+  }
+}
+
 // ---------- Events ----------
 
 const EVENT_ITEMS = [
-  { key: "probenplan", label: "Probenplan", statusCol: "B", linkCol: "C" },
-  { key: "rider", label: "Technical Rider", statusCol: "D", linkCol: "E" },
-  { key: "bilder", label: "Bilder", statusCol: "F", linkCol: "G" },
-  { key: "texte", label: "Texte (Ensemble & Komponist:in)", statusCol: "H", linkCol: "I" },
-  { key: "vertragKomponist", label: "Vertrag Komponist:in", statusCol: "J", linkCol: "K" },
-  { key: "vertragEnsemble", label: "Vertrag Ensemble", statusCol: "L", linkCol: "M" },
+  { key: "probenplan", label: "Probenplan", statusCol: "C", linkCol: "D" },
+  { key: "rider", label: "Technical Rider", statusCol: "E", linkCol: "F" },
+  { key: "bilder", label: "Bilder", statusCol: "G", linkCol: "H" },
+  { key: "texte", label: "Texte (Ensemble & Komponist:in)", statusCol: "I", linkCol: "J" },
+  { key: "vertragKomponist", label: "Vertrag Komponist:in", statusCol: "K", linkCol: "L" },
+  { key: "vertragEnsemble", label: "Vertrag Ensemble", statusCol: "M", linkCol: "N" },
 ];
 
 let eventsData = []; // [{rowIndex, project, items: {key: {status, link}}}]
@@ -929,7 +1157,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:M50");
+    const range = eventsSheetRange("A2:N50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -938,14 +1166,14 @@ async function loadEvents() {
       .map((r, i) => {
         const items = {};
         EVENT_ITEMS.forEach((def, idx) => {
-          const statusIdx = 1 + idx * 2;
-          const linkIdx = 2 + idx * 2;
+          const statusIdx = 2 + idx * 2;
+          const linkIdx = 3 + idx * 2;
           items[def.key] = {
             status: (r[statusIdx] || "fehlt").trim().toLowerCase(),
             link: r[linkIdx] || "",
           };
         });
-        return { rowIndex: i + 2, project: r[0], items };
+        return { rowIndex: i + 2, project: r[0], date: r[1] || "", items };
       });
   } catch (e) {
     setStatus("Events konnten nicht geladen werden: " + e.message, true);
@@ -988,6 +1216,10 @@ function renderEvents() {
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
           <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${EVENT_ITEMS.length} vorhanden</div>
         </div>
+        <div class="event-date-row">
+          <i class="ti ti-calendar-event"></i>
+          <input type="date" class="event-date-input" value="${escapeHtml(ev.date)}" data-row="${ev.rowIndex}" />
+        </div>
         ${rows}
       </div>`;
     })
@@ -1006,6 +1238,31 @@ function renderEvents() {
       updateEventLink(rowIndex, input.dataset.linkcol, input.dataset.key, input.value.trim());
     });
   });
+
+  container.querySelectorAll(".event-date-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const rowIndex = parseInt(input.dataset.row, 10);
+      updateEventDate(rowIndex, input.value);
+    });
+  });
+}
+
+async function updateEventDate(rowIndex, date) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const range = eventsSheetRange(`B${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[date]] }),
+    });
+    ev.date = date;
+    setStatus("Termin gespeichert.");
+  } catch (e) {
+    setStatus("Termin konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 async function toggleEventStatus(rowIndex, col, key) {
