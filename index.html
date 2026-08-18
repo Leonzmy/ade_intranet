@@ -64,7 +64,37 @@
       </div>
 
       <div id="view-calendar" class="hidden">
-        <div id="calendar-list"></div>
+        <div class="cal-header">
+          <div class="cal-nav">
+            <button id="cal-prev" class="btn" aria-label="Zurück"><i class="ti ti-chevron-left"></i></button>
+            <button id="cal-today" class="btn">Heute</button>
+            <button id="cal-next" class="btn" aria-label="Weiter"><i class="ti ti-chevron-right"></i></button>
+            <span id="cal-label" class="cal-label"></span>
+          </div>
+          <div class="cal-actions">
+            <div class="cal-view-toggle">
+              <button id="cal-view-month" class="active">Monat</button>
+              <button id="cal-view-week">Woche</button>
+            </div>
+            <button id="cal-new-event-btn" class="btn primary">Neuer Termin</button>
+          </div>
+        </div>
+
+        <form id="new-event-form" class="new-task-form hidden">
+          <div class="row">
+            <input type="text" name="title" placeholder="Titel des Termins" required />
+            <input type="date" name="date" required />
+            <input type="time" name="time" placeholder="Uhrzeit (optional)" />
+          </div>
+          <button type="submit" class="btn primary">Termin speichern</button>
+        </form>
+
+        <div class="cal-legend">
+          <span class="legend-item"><span class="legend-dot legend-deadline"></span>Deadline</span>
+          <span class="legend-item"><span class="legend-dot legend-event"></span>Termin</span>
+        </div>
+
+        <div id="calendar-grid"></div>
       </div>
     </main>
   </div>
