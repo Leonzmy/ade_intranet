@@ -27,6 +27,9 @@ let tasks = [];
 let filterMine = true;
 let tokenClient = null;
 let expandedRow = null;
+let peopleList = [];    // [{name, kuerzel, email}]
+let projectList = [];   // ["Marketing", ...]
+let festivalList = [];  // ["ade #19", ...]
 
 const els = {};
 
@@ -66,6 +69,9 @@ window.addEventListener("DOMContentLoaded", () => {
   els.viewTasks = document.getElementById("view-tasks");
   els.viewCalendar = document.getElementById("view-calendar");
   els.newTaskForm = document.getElementById("new-task-form");
+  els.projectSelect = document.getElementById("project-select");
+  els.festivalSelect = document.getElementById("festival-select");
+  els.assigneeSelect = document.getElementById("assignee-select");
   els.calendarList = document.getElementById("calendar-list");
 
   els.loginBtn.addEventListener("click", handleLogin);
@@ -125,9 +131,50 @@ async function enterApp() {
 
   await fetchUserEmail();
   els.userLabel.textContent = userEmail || "";
+  await loadStammdaten();
   await loadTasks();
   await loadCalendar();
   setStatus("");
+}
+
+async function loadStammdaten() {
+  try {
+    const sheet = encodeURIComponent(CONFIG.STAMMDATEN_SHEET_NAME);
+    const ranges = [
+      `${sheet}!A2:C50`,
+      `${sheet}!E2:E50`,
+      `${sheet}!G2:G50`,
+    ].map((r) => `ranges=${encodeURIComponent(r)}`).join("&");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values:batchGet?${ranges}`;
+    const data = await apiFetch(url);
+    const [peopleRes, projectRes, festivalRes] = data.valueRanges || [];
+
+    peopleList = (peopleRes?.values || [])
+      .filter((r) => r[0])
+      .map((r) => ({ name: r[0], kuerzel: r[1] || "", email: (r[2] || "").trim().toLowerCase() }));
+
+    projectList = (projectRes?.values || []).map((r) => r[0]).filter(Boolean);
+    festivalList = (festivalRes?.values || []).map((r) => r[0]).filter(Boolean);
+
+    fillSelect(els.projectSelect, projectList);
+    fillSelect(els.festivalSelect, festivalList, CONFIG.DEFAULT_FESTIVAL);
+    fillSelect(els.assigneeSelect, peopleList.map((p) => p.name));
+  } catch (e) {
+    setStatus("Stammdaten (Personen/Projekte) konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+function fillSelect(selectEl, values, defaultValue) {
+  const placeholder = selectEl.options[0];
+  selectEl.innerHTML = "";
+  selectEl.appendChild(placeholder);
+  values.forEach((v) => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    if (defaultValue && v === defaultValue) opt.selected = true;
+    selectEl.appendChild(opt);
+  });
 }
 
 async function apiFetch(url, options = {}) {
@@ -429,6 +476,9 @@ async function handleNewTask(e) {
 
   const newId = String(Date.now()).slice(-6);
   const notesValue = initialNote ? buildNoteLine(userEmail || "unbekannt", initialNote) : "";
+  const matchedPerson = peopleList.find((p) => p.name === assigneeName);
+  const kuerzel = matchedPerson?.kuerzel || "";
+  const email = matchedPerson?.email || "";
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${sheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
 
   try {
@@ -436,11 +486,11 @@ async function handleNewTask(e) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        values: [[newId, title, project, festival, assigneeName, "", "", due, "offen", notesValue]],
+        values: [[newId, title, project, festival, assigneeName, kuerzel, email, due, "offen", notesValue]],
       }),
     });
     form.reset();
-    setStatus("Aufgabe hinzugefügt. Kürzel/Email werden nachgeschlagen, sobald du sie manuell im Sheet ergänzt.");
+    setStatus("Aufgabe hinzugefügt.");
     await loadTasks();
   } catch (e) {
     setStatus("Aufgabe konnte nicht angelegt werden: " + e.message, true);
