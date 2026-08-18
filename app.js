@@ -1439,11 +1439,6 @@ function renderInventory() {
     }
   });
 
-  if (pendingBooking) {
-    setStatus(`Event "${pendingBooking.project}" vorausgefüllt — bei der gewünschten Position auf "Buchen" klicken.`);
-    pendingBooking = null;
-  }
-
   container.querySelectorAll("[data-confirm-idx]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const idx = btn.dataset.confirmIdx;
@@ -1465,6 +1460,11 @@ function renderInventory() {
   });
 
   renderNeeds();
+
+  if (pendingBooking) {
+    setStatus(`Event "${pendingBooking.project}" vorausgefüllt — bei der gewünschten Position auf "Buchen" klicken, oder unten als zusätzlichen Bedarf eintragen.`);
+    pendingBooking = null;
+  }
 }
 
 async function addBooking(equipment, project, date, qty) {
@@ -1489,8 +1489,14 @@ async function addBooking(equipment, project, date, qty) {
 function renderNeeds() {
   const projSelect = document.getElementById("need-project-select");
   const assigneeSelect = document.getElementById("need-assignee-select");
+  const dueInput = document.getElementById("need-due-input");
   if (projSelect) fillSelect(projSelect, eventProjectNames());
   if (assigneeSelect) fillSelect(assigneeSelect, peopleList.map((p) => p.name));
+
+  if (pendingBooking && projSelect && dueInput) {
+    if (pendingBooking.project) projSelect.value = pendingBooking.project;
+    if (pendingBooking.date) dueInput.value = pendingBooking.date;
+  }
 
   const needsList = document.getElementById("needs-list");
   if (!needsList) return;
