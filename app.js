@@ -56,6 +56,14 @@ function clearStoredToken() {
   sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
 }
 
+function bindClick(el, handler) {
+  if (el) el.addEventListener("click", handler);
+}
+
+function bindSubmit(el, handler) {
+  if (el) el.addEventListener("submit", handler);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   els.loginScreen = document.getElementById("login-screen");
   els.app = document.getElementById("app");
@@ -84,21 +92,21 @@ window.addEventListener("DOMContentLoaded", () => {
   els.calNewEventBtn = document.getElementById("cal-new-event-btn");
   els.newEventForm = document.getElementById("new-event-form");
 
-  els.calPrev.addEventListener("click", () => shiftCalendar(-1));
-  els.calNext.addEventListener("click", () => shiftCalendar(1));
-  els.calToday.addEventListener("click", () => { calAnchor = new Date(); loadCalendar(); });
-  els.calViewMonth.addEventListener("click", () => setCalView("month"));
-  els.calViewWeek.addEventListener("click", () => setCalView("week"));
-  els.calNewEventBtn.addEventListener("click", () => els.newEventForm.classList.toggle("hidden"));
-  els.newEventForm.addEventListener("submit", handleNewEvent);
+  bindClick(els.calPrev, () => shiftCalendar(-1));
+  bindClick(els.calNext, () => shiftCalendar(1));
+  bindClick(els.calToday, () => { calAnchor = new Date(); loadCalendar(); });
+  bindClick(els.calViewMonth, () => setCalView("month"));
+  bindClick(els.calViewWeek, () => setCalView("week"));
+  bindClick(els.calNewEventBtn, () => els.newEventForm && els.newEventForm.classList.toggle("hidden"));
+  bindSubmit(els.newEventForm, handleNewEvent);
 
-  els.loginBtn.addEventListener("click", handleLogin);
-  els.logoutBtn.addEventListener("click", handleLogout);
-  els.btnMine.addEventListener("click", () => setFilter(true));
-  els.btnAll.addEventListener("click", () => setFilter(false));
-  els.tabTasks.addEventListener("click", () => switchTab("tasks"));
-  els.tabCalendar.addEventListener("click", () => switchTab("calendar"));
-  els.newTaskForm.addEventListener("submit", handleNewTask);
+  bindClick(els.loginBtn, handleLogin);
+  bindClick(els.logoutBtn, handleLogout);
+  bindClick(els.btnMine, () => setFilter(true));
+  bindClick(els.btnAll, () => setFilter(false));
+  bindClick(els.tabTasks, () => switchTab("tasks"));
+  bindClick(els.tabCalendar, () => switchTab("calendar"));
+  bindSubmit(els.newTaskForm, handleNewTask);
 
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CONFIG.GOOGLE_CLIENT_ID,
