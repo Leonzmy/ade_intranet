@@ -11,6 +11,9 @@ const CONFIG = {
   // Name des Tabellenblatts (Tab) mit den Aufgaben
   TASKS_SHEET_NAME: "Aufgaben",
 
+  // Name des Tabellenblatts mit Personen/Projekten/Festival-Editionen
+  STAMMDATEN_SHEET_NAME: "Stammdaten",
+
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
   // Für einen gemeinsamen Festival-Kalender: die Kalender-ID aus den
