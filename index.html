@@ -20,6 +20,12 @@
   </div>
 
   <div id="app" class="hidden app-shell">
+    <div class="topbar-slim">
+      <span id="user-label"></span>
+      <button id="logout-btn" class="btn">Abmelden</button>
+    </div>
+
+    <div class="app-body">
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="festival-badge">19. aDe-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
@@ -35,11 +41,6 @@
         <button class="nav-item" data-view="contracts"><i class="ti ti-file-text"></i>Verträge</button>
         <button class="nav-item" data-view="contacts"><i class="ti ti-address-book"></i>Kontaktdaten</button>
       </nav>
-
-      <div class="sidebar-footer">
-        <div class="subtitle" id="user-label"></div>
-        <button id="logout-btn" class="btn">Abmelden</button>
-      </div>
     </aside>
 
     <main>
@@ -151,6 +152,7 @@
         </div>
       </div>
     </main>
+    </div>
   </div>
 
   <script src="config.js"></script>
