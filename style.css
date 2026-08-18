@@ -1372,3 +1372,110 @@ details summary {
   color: var(--text-muted);
   font-family: var(--font);
 }
+
+
+/* ---------- Programmheft ---------- */
+
+.programmtext-input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.55;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+.programmtext-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.ph-event-group {
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.ph-event-header {
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ph-event-header::-webkit-details-marker { display: none; }
+.ph-event-header::before {
+  content: "▸";
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+  font-size: 13px;
+}
+.ph-event-group[open] > .ph-event-header::before { transform: rotate(90deg); }
+
+.ph-event-body { padding: 10px 14px 12px; }
+
+.ph-person-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  background: var(--surface);
+}
+
+.ph-person-row:last-child { margin-bottom: 0; }
+
+.ph-person-main { flex: 1; min-width: 0; }
+.ph-person-name { font-size: 13.5px; font-weight: 500; }
+.ph-person-role { font-size: 11.5px; color: var(--text-secondary); }
+
+.ph-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ph-badge.ok { background: #e6f4ea; color: #1a7a3c; cursor: pointer; }
+.ph-badge.missing { background: var(--danger-bg); color: var(--danger); }
+
+.ph-link-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  flex-shrink: 0;
+}
+
+.ph-link-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.bio-text {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+#bio-modal-photo img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+}
