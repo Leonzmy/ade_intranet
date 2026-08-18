@@ -20,6 +20,9 @@ const CONFIG = {
   // Name der Tabellenblätter für Technik-Inventar und Buchungen
   INVENTORY_SHEET_NAME: "Inventar",
   BOOKINGS_SHEET_NAME: "Buchungen",
+
+   // Name des Tabellenblatts für Kontakte (Ensemble/Interpret:innen/Komponist:innen)
+  CONTACTS_SHEET_NAME: "Kontakte",
   
   // Google-Kalender-ID für die Kalenderansicht.
   // "primary" nutzt den Kalender des eingeloggten Nutzers.
