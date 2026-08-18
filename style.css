@@ -743,6 +743,12 @@ main {
   gap: 10px;
 }
 
+.modal-footer-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .rider-done-check {
   display: flex;
   align-items: center;
