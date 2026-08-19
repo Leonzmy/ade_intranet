@@ -1248,6 +1248,9 @@ async function syncContacts() {
   }
 }
 
+let contactFilterRole = "";
+let contactFilterEvent = "";
+
 function renderContacts() {
   const container = document.getElementById("contacts-list");
   if (!container) return;
@@ -1257,22 +1260,56 @@ function renderContacts() {
     return;
   }
 
+  // Filterleiste (nur einmal aufbauen, damit die Auswahl beim Neurendern bleibt)
+  const filterEl = document.getElementById("contacts-filters");
+  if (filterEl && !filterEl.dataset.built) {
+    const events = Array.from(new Set(eventsData.map((e) => e.project))).sort();
+    filterEl.innerHTML = `
+      <select id="contact-filter-role">
+        <option value="">Alle Rollen</option>
+        <option value="Ensemble">Ensemble</option>
+        <option value="Interpret:in">Interpret:innen</option>
+        <option value="Komponist:in">Komponist:innen</option>
+      </select>
+      <select id="contact-filter-event">
+        <option value="">Alle Events</option>
+        ${events.map((ev) => `<option value="${escapeHtml(ev)}">${escapeHtml(ev)}</option>`).join("")}
+      </select>`;
+    filterEl.dataset.built = "1";
+    document.getElementById("contact-filter-role").addEventListener("change", (e) => {
+      contactFilterRole = e.target.value;
+      renderContacts();
+    });
+    document.getElementById("contact-filter-event").addEventListener("change", (e) => {
+      contactFilterEvent = e.target.value;
+      renderContacts();
+    });
+  }
+
+  const visible = contactsData.filter((c) => {
+    const roleOk = !contactFilterRole || (c.role || "").includes(contactFilterRole);
+    const eventOk = !contactFilterEvent || (c.events || "").split(",").map((s) => s.trim()).includes(contactFilterEvent);
+    return roleOk && eventOk;
+  });
+
   const header = `<div class="inv-row inv-header contact-row">
     <div class="contact-name">Name</div>
     <div class="contact-role">Rolle</div>
+    <div class="contact-role">Event</div>
     <div class="contact-field">Email</div>
     <div class="contact-field">Adresse</div>
     <div class="contact-field-sm">Telefon</div>
     <div style="width:36px"></div>
   </div>`;
 
-  const rows = contactsData
+  const rows = visible
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .map(
       (c) => `<div class="inv-row contact-row">
-        <div class="contact-name">${escapeHtml(c.name)}<div class="inv-cat">${escapeHtml(c.events)}</div></div>
+        <div class="contact-name">${escapeHtml(c.name)}</div>
         <div class="contact-role">${escapeHtml(c.role)}</div>
+        <div class="contact-role">${escapeHtml(c.events || "—")}</div>
         <div class="contact-static">${c.email ? escapeHtml(c.email) : "—"}</div>
         <div class="contact-static">${escapeHtml(formatAddress(c))}</div>
         <div class="contact-static">${c.phone ? escapeHtml(c.phone) : "—"}</div>
@@ -1281,7 +1318,7 @@ function renderContacts() {
     )
     .join("");
 
-  container.innerHTML = header + rows;
+  container.innerHTML = header + (rows || `<div class="inv-row">Keine Treffer für diese Auswahl.</div>`);
 
   container.querySelectorAll(".contact-link-btn").forEach((btn) => {
     btn.addEventListener("click", () => copyContactLink(parseInt(btn.dataset.row, 10)));
