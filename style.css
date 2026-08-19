@@ -1736,3 +1736,39 @@ details summary {
   align-items: center;
   gap: 12px;
 }
+
+/* ---------- Aufklappbare Checklisten-Untergruppe (Texte) ---------- */
+
+.checklist-subgroup { border-bottom: 1px solid var(--border); }
+.checklist-subgroup:last-child { border-bottom: none; }
+.checklist-subgroup .checklist-row { border-bottom: none; }
+
+.checklist-summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.checklist-summary::-webkit-details-marker { display: none; }
+
+.checklist-summary .checklist-label::before {
+  content: "▸ ";
+  color: var(--text-muted);
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.checklist-subgroup[open] > .checklist-summary .checklist-label::before {
+  transform: rotate(90deg);
+}
+
+.checklist-subrows {
+  background: var(--neutral-bg);
+  padding-left: 14px;
+}
+
+.checklist-subrows .checklist-row:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.programm-actions-left { display: flex; gap: 8px; }
