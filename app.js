@@ -1757,14 +1757,13 @@ function renderEvents() {
         </div>
         <div class="event-people">
           <div class="event-people-field">
-            <label>Ensemble</label>
+            <div class="people-toggle">
+              <button type="button" class="people-toggle-btn ${ev.interpreten && !ev.ensemble ? "" : "active"}" data-row="${ev.rowIndex}" data-mode="ensemble">Ensemble</button>
+              <button type="button" class="people-toggle-btn ${ev.interpreten && !ev.ensemble ? "active" : ""}" data-row="${ev.rowIndex}" data-mode="interpreten">Interpret:innen</button>
+            </div>
             <input type="text" class="event-people-input" placeholder="Name(n), mit Komma trennen"
-              value="${escapeHtml(ev.ensemble)}" data-row="${ev.rowIndex}" data-people-col="O" />
-          </div>
-          <div class="event-people-field">
-            <label>Interpret:innen</label>
-            <input type="text" class="event-people-input" placeholder="Name(n), mit Komma trennen"
-              value="${escapeHtml(ev.interpreten)}" data-row="${ev.rowIndex}" data-people-col="P" />
+              value="${escapeHtml(ev.interpreten && !ev.ensemble ? ev.interpreten : ev.ensemble)}"
+              data-row="${ev.rowIndex}" data-people-col="${ev.interpreten && !ev.ensemble ? "P" : "O"}" />
           </div>
           <div class="event-people-field">
             <label>Komponist:innen</label>
@@ -1777,6 +1776,27 @@ function renderEvents() {
       </div>`;
     })
     .join("");
+
+  container.querySelectorAll(".people-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const rowIndex = parseInt(btn.dataset.row, 10);
+      const mode = btn.dataset.mode;
+      const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+      if (!ev) return;
+
+      // Beim Umschalten den Inhalt in die andere Spalte übernehmen und die
+      // ursprüngliche leeren — so ist immer nur eines von beiden gefüllt.
+      const current = ev.interpreten && !ev.ensemble ? ev.interpreten : ev.ensemble;
+      if (mode === "ensemble") {
+        await updateEventPeople(rowIndex, "P", "");
+        await updateEventPeople(rowIndex, "O", current || "");
+      } else {
+        await updateEventPeople(rowIndex, "O", "");
+        await updateEventPeople(rowIndex, "P", current || "");
+      }
+      renderEvents();
+    });
+  });
 
   container.querySelectorAll(".event-people-input").forEach((input) => {
     input.addEventListener("change", () => {
