@@ -41,7 +41,7 @@
     h1 { font-size: 20px; margin: 0 0 6px; }
     p { color: var(--text-secondary); font-size: 14px; margin: 0 0 20px; }
     label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; margin-top: 16px; }
-    textarea, input[type="file"] {
+    textarea, input[type="file"], input[type="text"] {
       width: 100%;
       font-family: var(--font);
       font-size: 14px;
@@ -95,6 +95,10 @@
         <input type="file" id="photo" name="photo" accept="image/*" />
         <div class="hint">JPG oder PNG, maximal 5 MB.</div>
         <div class="current-photo hidden" id="current-photo"></div>
+
+        <label for="photoCredits">Bildcredits</label>
+        <input type="text" id="photoCredits" name="photoCredits" placeholder="Name des/der Fotograf:in" />
+        <div class="hint">Wird als Bildnachweis im Programmheft abgedruckt.</div>
 
         <button type="submit" id="submit-btn">Speichern</button>
       </form>
@@ -152,6 +156,7 @@
         document.getElementById("greeting").textContent =
           `Hallo ${data.name}, bitte Kurzbio und Foto für ${data.events || "das Festival"} einreichen:`;
         bioEl.value = data.bio || "";
+        document.getElementById("photoCredits").value = data.photoCredits || "";
         updateCounter();
 
         if (data.photoUrl) {
@@ -190,7 +195,13 @@
         return;
       }
 
-      const payload = { action: "saveProgrammheft", row, token, bio: bioEl.value.trim() };
+      const payload = {
+        action: "saveProgrammheft",
+        row,
+        token,
+        bio: bioEl.value.trim(),
+        photoCredits: document.getElementById("photoCredits").value.trim(),
+      };
 
       const file = fileInput.files[0];
       if (file) {
