@@ -325,7 +325,7 @@ async function loadTasks() {
 function addDaysStr(dateStr, n) {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return dateKey(d);
 }
 
 async function syncDeadlinesToCalendar() {
@@ -418,7 +418,12 @@ function addDays(date, n) {
 }
 
 function dateKey(date) {
-  return date.toISOString().slice(0, 10);
+  // Bewusst lokale Datumsteile statt toISOString(): letzteres rechnet nach UTC
+  // um und verschiebt dadurch je nach Zeitzone den Tag.
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function isSameDay(a, b) {
