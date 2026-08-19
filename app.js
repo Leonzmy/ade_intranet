@@ -1290,6 +1290,15 @@ function contractsStatusFor(ev) {
   return { status: "in arbeit", done, total: pairs.length };
 }
 
+// Status des Programms: fehlt (keine Stücke) / in arbeit / final
+function programmStatusFor(ev) {
+  const pieces = piecesOfEvent(ev.project);
+  if (pieces.length === 0) return { status: "fehlt", done: 0, total: 0 };
+  const done = pieces.filter((p) => p.status === "bestaetigt").length;
+  if (isProgrammFinal(ev.project)) return { status: "vorhanden", done, total: pieces.length };
+  return { status: "in arbeit", done, total: pieces.length };
+}
+
 // Alle Personen eines Events (über alle drei Rollen hinweg, ohne Dubletten)
 function peopleOfEvent(ev) {
   const names = new Set();
@@ -1807,7 +1816,7 @@ const EVENT_ITEMS = [
   { key: "probenplan", label: "Probenplan", statusCol: "C", linkCol: "D" },
   { key: "rider", label: "Technical Rider", statusCol: "E", linkCol: "F" },
   { key: "bilder", label: "Bilder", statusCol: "G", linkCol: "H" },
-  { key: "texte", label: "Texte (Ensemble & Komponist:in)", statusCol: "I", linkCol: "J" },
+  { key: "texte", label: "Bios", statusCol: "I", linkCol: "J" },
 ];
 
 let eventsData = []; // [{rowIndex, project, items: {key: {status, link}}}]
@@ -1872,8 +1881,10 @@ function renderEvents() {
         + (riderStatusFor(ev) === "vorhanden" ? 1 : 0)
         + (bilderInfo.status === "vorhanden" ? 1 : 0)
         + (texteInfo.status === "vorhanden" ? 1 : 0)
-        + (contractsInfo.status === "vorhanden" ? 1 : 0);
-      const totalCount = EVENT_ITEMS.length + 1;
+        + (contractsInfo.status === "vorhanden" ? 1 : 0)
+        + (programmStatusFor(ev).status === "vorhanden" ? 1 : 0)
+        + (ev.programmtext && ev.programmtext.trim() ? 1 : 0);
+      const totalCount = EVENT_ITEMS.length + 3;
       const complete = doneCount === totalCount;
 
       const rows = EVENT_ITEMS.map((def) => {
@@ -1907,7 +1918,7 @@ function renderEvents() {
           const info = programmheftStatusFor(ev, field);
           const pillClass = info.status === "vorhanden" ? "vorhanden" : info.status === "in arbeit" ? "in-arbeit" : "fehlt";
           const pillLabel = info.status === "vorhanden" ? "Fertig" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
-          const label = def.key === "bilder" ? "Bilder" : "Texte";
+          const label = def.key === "bilder" ? "Bilder" : "Bios";
           return `<div class="checklist-row">
             <div class="checklist-label checklist-label-link" data-open-programmheft="1">${escapeHtml(label)}</div>
             <span class="status-pill ${pillClass} static">${pillLabel}</span>
@@ -1937,6 +1948,24 @@ function renderEvents() {
         <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${contractsInfo.done}/${contractsInfo.total}</span>
       </div>`;
 
+      // Programm: aus den angelegten Stücken berechnet
+      const programmInfo = programmStatusFor(ev);
+      const programmPillClass = programmInfo.status === "vorhanden" ? "vorhanden" : programmInfo.status === "in arbeit" ? "in-arbeit" : "fehlt";
+      const programmPillLabel = programmInfo.status === "vorhanden" ? "Final" : programmInfo.status === "in arbeit" ? "In Arbeit" : "Fehlt";
+      const programmRow = `<div class="checklist-row">
+        <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programm</div>
+        <span class="status-pill ${programmPillClass} static">${programmPillLabel}</span>
+        <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${programmInfo.done}/${programmInfo.total}</span>
+      </div>`;
+
+      // Programmtext: vorhanden, sobald Text hinterlegt ist
+      const hasText = !!(ev.programmtext && ev.programmtext.trim());
+      const programmtextRow = `<div class="checklist-row">
+        <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programmtext</div>
+        <span class="status-pill ${hasText ? "vorhanden" : "fehlt"} static">${hasText ? "Vorhanden" : "Fehlt"}</span>
+        <span class="checklist-link-open"></span>
+      </div>`;
+
       return `<div class="event-card ${colorClass}">
         <div class="event-card-header">
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
@@ -1963,6 +1992,8 @@ function renderEvents() {
           </div>
         </div>
         ${rows}
+        ${programmRow}
+        ${programmtextRow}
         ${contractsRow}
       </div>`;
     })
