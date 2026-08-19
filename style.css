@@ -1779,3 +1779,21 @@ details summary {
   margin-top: 6px;
   margin-bottom: 10px;
 }
+
+.checklist-summary .checklist-label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.event-resp-icon { margin-left: auto; }
+
+.event-resp-select {
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  max-width: 150px;
+}
