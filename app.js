@@ -121,6 +121,14 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.contractGenerateBtn, handleGenerateContract);
   bindClick(document.getElementById("bio-modal-close"), closeBioModal);
   bindClick(document.getElementById("termin-modal-close"), closeTerminModal);
+  bindClick(document.getElementById("probenplan-modal-close"), closeProbenplanModal);
+  bindClick(document.getElementById("probenplan-csv-btn"), downloadProbenplanCsv);
+  const probenplanModalEl = document.getElementById("probenplan-modal");
+  if (probenplanModalEl) {
+    probenplanModalEl.addEventListener("click", (e) => {
+      if (e.target === probenplanModalEl) closeProbenplanModal();
+    });
+  }
   bindClick(document.getElementById("termin-delete-btn"), deleteTermin);
   const terminModalEl = document.getElementById("termin-modal");
   if (terminModalEl) {
@@ -213,6 +221,7 @@ async function enterApp() {
   await loadStammdaten();
   await loadTasks();
   await loadEvents();
+  fillLinkedEventSelect();
   await loadInventory();
   await loadContacts();
   await syncContacts();
@@ -665,9 +674,15 @@ async function handleNewEvent(e) {
 
   // Kategorie als Farbe und als unsichtbare Markierung mitspeichern
   const catDef = EVENT_CATEGORIES[category];
+  const linkedEvent = form.linkedEvent ? form.linkedEvent.value : "";
+  const privateProps = {};
   if (catDef) {
     body.colorId = catDef.colorId;
-    body.extendedProperties = { private: { fdCategory: category } };
+    privateProps.fdCategory = category;
+  }
+  if (linkedEvent) privateProps.fdEvent = linkedEvent;
+  if (Object.keys(privateProps).length) {
+    body.extendedProperties = { private: privateProps };
   }
   if (location) body.location = location;
 
@@ -1874,6 +1889,18 @@ function renderEvents() {
           </div>`;
         }
 
+        if (def.key === "probenplan") {
+          const isDone = item.status === "vorhanden";
+          return `<div class="checklist-row">
+            <div class="checklist-label checklist-label-link" data-row="${ev.rowIndex}" data-open-probenplan="1">${escapeHtml(def.label)}</div>
+            <button type="button" class="status-pill ${isDone ? "vorhanden" : "fehlt"}"
+              data-row="${ev.rowIndex}" data-statuscol="${def.statusCol}" data-key="${def.key}">
+              ${isDone ? "Vorhanden" : "Fehlt"}
+            </button>
+            <button type="button" class="checklist-link-open probenplan-download" data-row="${ev.rowIndex}" title="Probenplan öffnen"><i class="ti ti-calendar-week"></i></button>
+          </div>`;
+        }
+
         if (def.key === "bilder" || def.key === "texte") {
           const field = def.key === "bilder" ? "photoUrl" : "bio";
           const info = programmheftStatusFor(ev, field);
@@ -1974,6 +2001,14 @@ function renderEvents() {
 
   container.querySelectorAll(".checklist-label-link[data-open-contracts]").forEach((el) => {
     el.addEventListener("click", () => switchView("contracts"));
+  });
+
+  container.querySelectorAll(".checklist-label-link[data-open-probenplan]").forEach((el) => {
+    el.addEventListener("click", () => openProbenplanModal(parseInt(el.dataset.row, 10)));
+  });
+
+  container.querySelectorAll(".probenplan-download").forEach((btn) => {
+    btn.addEventListener("click", () => openProbenplanModal(parseInt(btn.dataset.row, 10)));
   });
 
   container.querySelectorAll(".checklist-label-link[data-open-programmheft]").forEach((el) => {
@@ -2571,6 +2606,8 @@ function openTerminModal(eventId) {
 
   const cat = categoryOf(ev);
   if (cat) rows.push({ icon: "tag", label: "Kategorie", value: escapeHtml(cat) });
+  const linkedEvent = ev.extendedProperties?.private?.fdEvent;
+  if (linkedEvent) rows.push({ icon: "ticket", label: "Gehört zu", value: escapeHtml(linkedEvent) });
   if (isDeadlineEvent(ev)) rows.push({ icon: "alarm", label: "Typ", value: "Aufgaben-Deadline" });
 
   if (ev.location) rows.push({ icon: "map-pin", label: "Ort", value: escapeHtml(ev.location) });
@@ -2710,4 +2747,128 @@ function renderNextEvent() {
       openTerminModal(ev.id);
     });
   }
+}
+
+// ---------- Probenplan ----------
+
+let probenplanEvent = null; // aktuell im Modal geöffnetes Event
+
+// Proben werden über einen weiten Zeitraum geladen, damit der Probenplan
+// vollständig ist — nicht nur der gerade sichtbare Kalendermonat.
+async function loadProbenFor(projectName) {
+  const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
+  const timeMin = new Date();
+  timeMin.setFullYear(timeMin.getFullYear() - 1);
+  const timeMax = new Date();
+  timeMax.setFullYear(timeMax.getFullYear() + 2);
+
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`
+    + `?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}`
+    + `&singleEvents=true&orderBy=startTime&maxResults=250`
+    + `&privateExtendedProperty=${encodeURIComponent("fdEvent=" + projectName)}`;
+
+  const data = await apiFetch(url);
+  return (data.items || []).filter((ev) => categoryOf(ev) === "Probe");
+}
+
+async function openProbenplanModal(rowIndex) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  probenplanEvent = ev;
+
+  document.getElementById("probenplan-modal-title").textContent = `Probenplan — ${ev.project}`;
+  const listEl = document.getElementById("probenplan-modal-list");
+  listEl.innerHTML = `<div class="empty">Lädt…</div>`;
+  document.getElementById("probenplan-modal").classList.remove("hidden");
+
+  try {
+    const proben = await loadProbenFor(ev.project);
+    probenplanEvent.proben = proben;
+
+    listEl.innerHTML = proben.length
+      ? proben
+          .map((p) => {
+            const start = new Date(p.start.dateTime || p.start.date + "T00:00:00");
+            const end = p.end?.dateTime ? new Date(p.end.dateTime) : null;
+            const dateStr = start.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+            const timeStr = p.start.dateTime
+              ? start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+                + (end ? "–" + end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "")
+              : "ganztägig";
+            return `<div class="rider-list-row">
+              <span>${escapeHtml(dateStr)}<br><span class="qty">${timeStr}${p.location ? " · " + escapeHtml(p.location) : ""}</span></span>
+              <span class="qty">${escapeHtml(p.summary || "Probe")}</span>
+            </div>`;
+          })
+          .join("")
+      : `<div class="empty">Noch keine Proben zugeordnet. Im Kalender einen Termin mit Kategorie "Probe" anlegen und diesem Event zuordnen.</div>`;
+
+    document.getElementById("probenplan-hint").textContent = proben.length
+      ? `${proben.length} Probe${proben.length === 1 ? "" : "n"}`
+      : "";
+  } catch (e) {
+    listEl.innerHTML = `<div class="empty">Proben konnten nicht geladen werden: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function closeProbenplanModal() {
+  document.getElementById("probenplan-modal").classList.add("hidden");
+  probenplanEvent = null;
+}
+
+function downloadProbenplanCsv() {
+  if (!probenplanEvent || !probenplanEvent.proben) return;
+  const ev = probenplanEvent;
+
+  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const line = (cells) => cells.map(csvEscape).join(";");
+
+  const lines = [];
+  lines.push(line(["PROBENPLAN"]));
+  lines.push(line([]));
+  lines.push(line(["Event", ev.project]));
+  lines.push(line(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]));
+  lines.push(line(["Konzertdatum", ev.date ? new Date(ev.date + "T00:00:00").toLocaleDateString("de-DE") : ""]));
+  lines.push(line(["Erstellt am", new Date().toLocaleDateString("de-DE")]));
+  lines.push(line([]));
+  lines.push(line(["Datum", "Beginn", "Ende", "Titel", "Ort"]));
+
+  ev.proben.forEach((p) => {
+    const start = new Date(p.start.dateTime || p.start.date + "T00:00:00");
+    const end = p.end?.dateTime ? new Date(p.end.dateTime) : null;
+    lines.push(line([
+      start.toLocaleDateString("de-DE"),
+      p.start.dateTime ? start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "ganztägig",
+      end ? end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
+      p.summary || "Probe",
+      p.location || "",
+    ]));
+  });
+
+  if (ev.proben.length === 0) lines.push(line(["— keine Proben zugeordnet —"]));
+
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `probenplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Auswahlfeld "Event zuordnen" im Termin-Formular befüllen
+function fillLinkedEventSelect() {
+  const sel = document.getElementById("event-linked-select");
+  if (!sel) return;
+  const placeholder = sel.options[0];
+  sel.innerHTML = "";
+  sel.appendChild(placeholder);
+  eventsData.forEach((ev) => {
+    const opt = document.createElement("option");
+    opt.value = ev.project;
+    opt.textContent = ev.project;
+    sel.appendChild(opt);
+  });
 }
