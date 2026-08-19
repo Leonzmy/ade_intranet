@@ -1893,7 +1893,7 @@ function renderEvents() {
         if (def.key === "rider") {
           const computed = riderStatusFor(ev);
           const pillClass = computed === "vorhanden" ? "vorhanden" : computed === "in arbeit" ? "in-arbeit" : "fehlt";
-          const pillLabel = computed === "vorhanden" ? "Vorhanden" : computed === "in arbeit" ? "In Arbeit" : "Fehlt";
+          const pillLabel = computed === "vorhanden" ? "Erledigt" : computed === "in arbeit" ? "In Arbeit" : "Fehlt";
           return `<div class="checklist-row">
             <div class="checklist-label checklist-label-link" data-row="${ev.rowIndex}" data-open-rider="1">${escapeHtml(def.label)}</div>
             <span class="status-pill ${pillClass} static">${pillLabel}</span>
@@ -1907,20 +1907,22 @@ function renderEvents() {
             <div class="checklist-label checklist-label-link" data-row="${ev.rowIndex}" data-open-probenplan="1">${escapeHtml(def.label)}</div>
             <button type="button" class="status-pill ${isDone ? "vorhanden" : "fehlt"}"
               data-row="${ev.rowIndex}" data-statuscol="${def.statusCol}" data-key="${def.key}">
-              ${isDone ? "Vorhanden" : "Fehlt"}
+              ${isDone ? "Erledigt" : "Fehlt"}
             </button>
             <button type="button" class="checklist-link-open probenplan-download" data-row="${ev.rowIndex}" title="Probenplan öffnen"><i class="ti ti-calendar-week"></i></button>
           </div>`;
         }
 
-        if (def.key === "bilder" || def.key === "texte") {
-          const field = def.key === "bilder" ? "photoUrl" : "bio";
-          const info = programmheftStatusFor(ev, field);
+        if (def.key === "texte") {
+          return ""; // erscheint gebündelt in der Texte-Gruppe weiter unten
+        }
+
+        if (def.key === "bilder") {
+          const info = programmheftStatusFor(ev, "photoUrl");
           const pillClass = info.status === "vorhanden" ? "vorhanden" : info.status === "in arbeit" ? "in-arbeit" : "fehlt";
-          const pillLabel = info.status === "vorhanden" ? "Fertig" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
-          const label = def.key === "bilder" ? "Bilder" : "Bios";
+          const pillLabel = info.status === "vorhanden" ? "Erledigt" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
           return `<div class="checklist-row">
-            <div class="checklist-label checklist-label-link" data-open-programmheft="1">${escapeHtml(label)}</div>
+            <div class="checklist-label checklist-label-link" data-open-programmheft="1">Bilder</div>
             <span class="status-pill ${pillClass} static">${pillLabel}</span>
             <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${info.done}/${info.total}</span>
           </div>`;
@@ -1931,7 +1933,7 @@ function renderEvents() {
           <div class="checklist-label">${escapeHtml(def.label)}</div>
           <button type="button" class="status-pill ${isDone ? "vorhanden" : "fehlt"}"
             data-row="${ev.rowIndex}" data-statuscol="${def.statusCol}" data-key="${def.key}">
-            ${isDone ? "Vorhanden" : "Fehlt"}
+            ${isDone ? "Erledigt" : "Fehlt"}
           </button>
           <input type="text" class="checklist-link" placeholder="Link (Google Drive o.ä.)"
             value="${escapeHtml(item.link)}"
@@ -1955,21 +1957,40 @@ function renderEvents() {
       const programmRow = `<div class="checklist-row">
         <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programm</div>
         <span class="status-pill ${programmPillClass} static">${programmPillLabel}</span>
-        <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${programmInfo.done}/${programmInfo.total}</span>
-      </div>`;
-
-      // Programmtext: vorhanden, sobald Text hinterlegt ist
-      const hasText = !!(ev.programmtext && ev.programmtext.trim());
-      const programmtextRow = `<div class="checklist-row">
-        <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programmtext</div>
-        <span class="status-pill ${hasText ? "vorhanden" : "fehlt"} static">${hasText ? "Vorhanden" : "Fehlt"}</span>
         <span class="checklist-link-open"></span>
       </div>`;
+
+      // Texte: Sammelzeile mit aufklappbaren Unterpunkten (Bios, Programmtext)
+      const hasText = !!(ev.programmtext && ev.programmtext.trim());
+      const texteComplete = texteInfo.status === "vorhanden" && hasText;
+      const texteInProgress = !texteComplete && (texteInfo.done > 0 || hasText);
+      const texteClass = texteComplete ? "vorhanden" : texteInProgress ? "in-arbeit" : "fehlt";
+      const texteLabel = texteComplete ? "Erledigt" : texteInProgress ? "In Arbeit" : "Fehlt";
+
+      const texteRow = `<details class="checklist-subgroup">
+        <summary class="checklist-row checklist-summary">
+          <div class="checklist-label">Texte</div>
+          <span class="status-pill ${texteClass} static">${texteLabel}</span>
+          <span class="checklist-link-open"></span>
+        </summary>
+        <div class="checklist-subrows">
+          <div class="checklist-row">
+            <div class="checklist-label checklist-label-link" data-open-programmheft="1">Bios</div>
+            <span class="status-pill ${texteInfo.status === "vorhanden" ? "vorhanden" : texteInfo.status === "in arbeit" ? "in-arbeit" : "fehlt"} static">${texteInfo.status === "vorhanden" ? "Erledigt" : texteInfo.status === "in arbeit" ? "In Arbeit" : "Fehlt"}</span>
+            <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${texteInfo.done}/${texteInfo.total}</span>
+          </div>
+          <div class="checklist-row">
+            <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programmtext</div>
+            <span class="status-pill ${hasText ? "vorhanden" : "fehlt"} static">${hasText ? "Erledigt" : "Fehlt"}</span>
+            <span class="checklist-link-open"></span>
+          </div>
+        </div>
+      </details>`;
 
       return `<div class="event-card ${colorClass}">
         <div class="event-card-header">
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
-          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} vorhanden</div>
+          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} erledigt</div>
         </div>
         <div class="event-date-row">
           <i class="ti ti-calendar-event"></i>
@@ -1993,7 +2014,7 @@ function renderEvents() {
         </div>
         ${rows}
         ${programmRow}
-        ${programmtextRow}
+        ${texteRow}
         ${contractsRow}
       </div>`;
     })
@@ -2463,6 +2484,12 @@ function renderProgrammheft() {
   const container = document.getElementById("programmheft-list");
   if (!container) return;
 
+  // Merken, welche Event-Gruppen gerade aufgeklappt sind — sonst klappt beim
+  // Neurendern (nach jeder Änderung) alles wieder zu.
+  const openEvents = new Set(
+    Array.from(container.querySelectorAll(".ph-event-group[open]")).map((el) => el.dataset.event)
+  );
+
   if (eventsData.length === 0) {
     container.innerHTML = `<div class="empty">Keine Events vorhanden.</div>`;
     return;
@@ -2482,8 +2509,8 @@ function renderProgrammheft() {
               <div class="ph-person-name">${escapeHtml(name)}</div>
               <div class="ph-person-role">${escapeHtml(r.label)}</div>
             </div>
-            <span class="ph-badge ${hasBio ? "ok" : "missing"}" ${hasBio ? `data-bio-row="${rowIdx}"` : ""}>Bio: ${hasBio ? "vorhanden" : "fehlt"}</span>
-            <span class="ph-badge ${hasPhoto ? "ok" : "missing"}" ${hasPhoto ? `data-photo-row="${rowIdx}"` : ""}>Foto: ${hasPhoto ? "vorhanden" : "fehlt"}</span>
+            <span class="ph-badge ${hasBio ? "ok" : "missing"}" ${hasBio ? `data-bio-row="${rowIdx}"` : ""}>Bio: ${hasBio ? "erledigt" : "fehlt"}</span>
+            <span class="ph-badge ${hasPhoto ? "ok" : "missing"}" ${hasPhoto ? `data-photo-row="${rowIdx}"` : ""}>Foto: ${hasPhoto ? "erledigt" : "fehlt"}</span>
             <button type="button" class="ph-link-btn" data-ph-link="${rowIdx}" title="Formular-Link kopieren"><i class="ti ti-link"></i></button>
           </div>`);
         });
@@ -2493,7 +2520,7 @@ function renderProgrammheft() {
         ? rows.join("")
         : `<div class="empty">Noch keine Beteiligten bei diesem Event eingetragen.</div>`;
 
-      return `<details class="ph-event-group">
+      return `<details class="ph-event-group" data-event="${escapeHtml(ev.project)}" ${openEvents.has(ev.project) ? "open" : ""}>
         <summary class="ph-event-header">${escapeHtml(ev.project)} <span class="contract-count">${rows.length}</span></summary>
         <div class="ph-event-body">
           ${renderProgrammFor(ev)}
@@ -2979,7 +3006,10 @@ function renderProgrammFor(ev) {
     <div class="ph-subsection-title">Programm</div>
     <div class="piece-list" data-event="${escapeHtml(ev.project)}">${rows || `<div class="empty">Noch keine Stücke.</div>`}</div>
     <div class="programm-actions">
-      <button type="button" class="btn piece-add" data-event="${escapeHtml(ev.project)}"><i class="ti ti-plus"></i> Stück hinzufügen</button>
+      <div class="programm-actions-left">
+        <button type="button" class="btn piece-add" data-event="${escapeHtml(ev.project)}"><i class="ti ti-plus"></i> Stück hinzufügen</button>
+        <button type="button" class="btn programm-csv" data-event="${escapeHtml(ev.project)}"><i class="ti ti-download"></i> CSV</button>
+      </div>
       <label class="rider-done-check">
         <input type="checkbox" class="programm-final" data-event="${escapeHtml(ev.project)}" ${final ? "checked" : ""} />
         Finales Programm
@@ -3005,6 +3035,10 @@ function bindProgrammHandlers(container) {
 
   container.querySelectorAll(".piece-add").forEach((btn) => {
     btn.addEventListener("click", () => addPiece(btn.dataset.event));
+  });
+
+  container.querySelectorAll(".programm-csv").forEach((btn) => {
+    btn.addEventListener("click", () => downloadProgrammCsv(btn.dataset.event));
   });
 
   container.querySelectorAll(".programm-final").forEach((cb) => {
@@ -3099,7 +3133,13 @@ async function cyclePieceStatus(rowIndex) {
       body: JSON.stringify({ values: [[next]] }),
     });
     p.status = next;
-    renderProgrammheft();
+    // Nur den betroffenen Button aktualisieren statt alles neu aufzubauen
+    const btn = document.querySelector(`.piece-status[data-piece-row="${rowIndex}"]`);
+    if (btn) {
+      const st = PIECE_STATUS[next];
+      btn.className = `piece-status ${st.cls}`;
+      btn.textContent = st.label;
+    }
   } catch (e) {
     setStatus("Status konnte nicht gespeichert werden: " + e.message, true);
   }
@@ -3174,4 +3214,49 @@ async function setProgrammFinal(project, isFinal) {
   } catch (e) {
     setStatus("Konnte nicht gespeichert werden: " + e.message, true);
   }
+}
+
+function downloadProgrammCsv(project) {
+  const ev = eventsData.find((e) => e.project === project);
+  const pieces = piecesOfEvent(project);
+
+  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const line = (cells) => cells.map(csvEscape).join(";");
+
+  const lines = [];
+  lines.push(line(["PROGRAMM"]));
+  lines.push(line([]));
+  lines.push(line(["Event", project]));
+  lines.push(line(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]));
+  lines.push(line(["Datum", ev && ev.date ? new Date(ev.date + "T00:00:00").toLocaleDateString("de-DE") : ""]));
+  lines.push(line(["Status", isProgrammFinal(project) ? "Finales Programm" : "In Arbeit"]));
+  lines.push(line(["Erstellt am", new Date().toLocaleDateString("de-DE")]));
+  lines.push(line([]));
+  lines.push(line(["Nr.", "Komponist:in", "Titel", "Status"]));
+
+  if (pieces.length) {
+    pieces.forEach((p, i) => {
+      const st = PIECE_STATUS[p.status] || PIECE_STATUS.idee;
+      lines.push(line([i + 1, p.komponist, p.titel, st.label]));
+    });
+  } else {
+    lines.push(line(["— noch keine Stücke —"]));
+  }
+
+  // Programmtext als eigener Abschnitt anhängen, falls vorhanden
+  if (ev && ev.programmtext && ev.programmtext.trim()) {
+    lines.push(line([]));
+    lines.push(line(["PROGRAMMTEXT"]));
+    ev.programmtext.split("\n").forEach((textLine) => lines.push(line([textLine])));
+  }
+
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `programm-${project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
