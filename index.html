@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=34" />
+  <link rel="stylesheet" href="style.css?v=35" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -50,14 +50,20 @@
       <div class="status-msg" id="status-msg"></div>
 
       <div id="view-dashboard" class="view">
-        <h2 class="view-title">Dashboard</h2>
+        <div class="dashboard-header">
+          <h2 class="view-title">Dashboard</h2>
+          <div class="filters">
+            <button id="dash-filter-mine" class="active">Meine Aufgaben</button>
+            <button id="dash-filter-all">Alle</button>
+          </div>
+        </div>
         <div id="dashboard-stats" class="dashboard-stats"></div>
 
         <div id="dashboard-next-event"></div>
 
         <div class="dashboard-tasks-card" id="dashboard-tasks-card">
           <div class="dashboard-tasks-header">
-            <i class="ti ti-alert-circle"></i> Aktuelle Aufgaben
+            <i class="ti ti-alert-circle"></i> <span id="dashboard-tasks-heading">Aktuelle Aufgaben</span>
           </div>
           <div id="dashboard-tasks-list"></div>
         </div>
@@ -299,6 +305,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=34"></script>
+  <script src="app.js?v=35"></script>
 </body>
 </html>
