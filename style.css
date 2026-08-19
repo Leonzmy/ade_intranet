@@ -1799,3 +1799,36 @@ details summary {
   color: var(--text);
   max-width: 150px;
 }
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.dashboard-header .view-title { margin-bottom: 0; }
+
+.task-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.task-delete {
+  font-family: var(--font);
+  font-size: 12px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+}
+
+.task-delete:hover { color: var(--danger); background: var(--danger-bg); }
