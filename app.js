@@ -229,6 +229,7 @@ async function enterApp() {
   await loadContractDetails();
   await loadProgrammheft();
   await syncProgrammheft();
+  await loadProgramm();
   await syncRiderStatuses();
   await syncDeadlinesToCalendar();
   await loadCalendar();
@@ -2464,7 +2465,9 @@ function renderProgrammheft() {
       return `<details class="ph-event-group">
         <summary class="ph-event-header">${escapeHtml(ev.project)} <span class="contract-count">${rows.length}</span></summary>
         <div class="ph-event-body">
-          <div class="ph-subsection-title">Programmtext</div>
+          ${renderProgrammFor(ev)}
+
+          <div class="ph-subsection-title ph-subsection-spaced">Programmtext</div>
           <textarea class="programmtext-input" rows="5" placeholder="Programmtext für dieses Event…" data-row="${ev.rowIndex}">${escapeHtml(ev.programmtext || "")}</textarea>
           <div class="programmtext-actions">
             <span class="contract-status" id="pt-status-${ev.rowIndex}"></span>
@@ -2477,6 +2480,8 @@ function renderProgrammheft() {
       </details>`;
     })
     .join("");
+
+  bindProgrammHandlers(container);
 
   container.querySelectorAll(".pt-save-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2871,4 +2876,271 @@ function fillLinkedEventSelect() {
     opt.textContent = ev.project;
     sel.appendChild(opt);
   });
+}
+
+// ---------- Programm (Stück-Reihenfolge je Event) ----------
+
+const PIECE_STATUS = {
+  "idee": { label: "Idee", cls: "idee" },
+  "zustimmung": { label: "Zustimmung", cls: "zustimmung" },
+  "bestaetigt": { label: "Bestätigt", cls: "bestaetigt" },
+};
+const PIECE_STATUS_ORDER = ["idee", "zustimmung", "bestaetigt"];
+
+let programmPieces = []; // [{rowIndex, id, event, position, komponist, titel, status, final}]
+
+function programmSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.PROGRAMM_SHEET_NAME)}!${a1}`;
+}
+
+async function loadProgramm() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmSheetRange("A2:G500")}`;
+    const data = await apiFetch(url);
+    programmPieces = (data.values || [])
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        id: r[0] || "",
+        event: r[1] || "",
+        position: parseInt(r[2], 10) || 0,
+        komponist: r[3] || "",
+        titel: r[4] || "",
+        status: (r[5] || "idee").trim().toLowerCase(),
+        final: String(r[6] || "").toLowerCase() === "ja",
+      }))
+      .filter((p) => p.id);
+  } catch (e) {
+    setStatus("Programm konnte nicht geladen werden: " + e.message, true);
+  }
+}
+
+function piecesOfEvent(project) {
+  return programmPieces
+    .filter((p) => p.event === project)
+    .sort((a, b) => a.position - b.position);
+}
+
+function isProgrammFinal(project) {
+  const pieces = piecesOfEvent(project);
+  return pieces.length > 0 && pieces.every((p) => p.final);
+}
+
+function renderProgrammFor(ev) {
+  const pieces = piecesOfEvent(ev.project);
+  const final = isProgrammFinal(ev.project);
+
+  const rows = pieces
+    .map((p, idx) => {
+      const st = PIECE_STATUS[p.status] || PIECE_STATUS.idee;
+      return `<div class="piece-row" draggable="true" data-piece-row="${p.rowIndex}" data-idx="${idx}">
+        <span class="piece-handle" title="Zum Verschieben ziehen"><i class="ti ti-grip-vertical"></i></span>
+        <input type="text" class="piece-input" placeholder="Komponist:in" value="${escapeHtml(p.komponist)}"
+          data-piece-row="${p.rowIndex}" data-col="D" />
+        <input type="text" class="piece-input" placeholder="Titel" value="${escapeHtml(p.titel)}"
+          data-piece-row="${p.rowIndex}" data-col="E" />
+        <button type="button" class="piece-status ${st.cls}" data-piece-row="${p.rowIndex}" title="Status wechseln">${st.label}</button>
+        <button type="button" class="piece-delete" data-piece-row="${p.rowIndex}" title="Stück entfernen"><i class="ti ti-trash"></i></button>
+      </div>`;
+    })
+    .join("");
+
+  return `<div class="programm-block">
+    <div class="ph-subsection-title">Programm</div>
+    <div class="piece-list" data-event="${escapeHtml(ev.project)}">${rows || `<div class="empty">Noch keine Stücke.</div>`}</div>
+    <div class="programm-actions">
+      <button type="button" class="btn piece-add" data-event="${escapeHtml(ev.project)}"><i class="ti ti-plus"></i> Stück hinzufügen</button>
+      <label class="rider-done-check">
+        <input type="checkbox" class="programm-final" data-event="${escapeHtml(ev.project)}" ${final ? "checked" : ""} />
+        Finales Programm
+      </label>
+    </div>
+  </div>`;
+}
+
+function bindProgrammHandlers(container) {
+  container.querySelectorAll(".piece-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      updatePieceField(parseInt(input.dataset.pieceRow, 10), input.dataset.col, input.value.trim());
+    });
+  });
+
+  container.querySelectorAll(".piece-status").forEach((btn) => {
+    btn.addEventListener("click", () => cyclePieceStatus(parseInt(btn.dataset.pieceRow, 10)));
+  });
+
+  container.querySelectorAll(".piece-delete").forEach((btn) => {
+    btn.addEventListener("click", () => deletePiece(parseInt(btn.dataset.pieceRow, 10)));
+  });
+
+  container.querySelectorAll(".piece-add").forEach((btn) => {
+    btn.addEventListener("click", () => addPiece(btn.dataset.event));
+  });
+
+  container.querySelectorAll(".programm-final").forEach((cb) => {
+    cb.addEventListener("change", () => setProgrammFinal(cb.dataset.event, cb.checked));
+  });
+
+  // Drag & Drop zum Umsortieren
+  container.querySelectorAll(".piece-list").forEach((list) => {
+    let dragged = null;
+
+    list.querySelectorAll(".piece-row").forEach((row) => {
+      row.addEventListener("dragstart", (e) => {
+        dragged = row;
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      row.addEventListener("dragend", () => {
+        row.classList.remove("dragging");
+        dragged = null;
+      });
+
+      row.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (!dragged || dragged === row) return;
+        const rect = row.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        list.insertBefore(dragged, after ? row.nextSibling : row);
+      });
+    });
+
+    list.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const order = Array.from(list.querySelectorAll(".piece-row")).map((r) => parseInt(r.dataset.pieceRow, 10));
+      persistPieceOrder(order);
+    });
+  });
+}
+
+async function addPiece(project) {
+  const existing = piecesOfEvent(project);
+  const nextPos = existing.length ? Math.max(...existing.map((p) => p.position)) + 1 : 1;
+  const newId = String(Date.now()).slice(-6);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmSheetRange("A1")}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  try {
+    const resp = await apiFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[newId, project, nextPos, "", "", "idee", "nein"]] }),
+    });
+    const updatedRange = resp?.updates?.updatedRange || "";
+    const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
+    const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
+    programmPieces.push({
+      rowIndex: newRowIndex, id: newId, event: project, position: nextPos,
+      komponist: "", titel: "", status: "idee", final: false,
+    });
+    renderProgrammheft();
+  } catch (e) {
+    setStatus("Stück konnte nicht angelegt werden: " + e.message, true);
+  }
+}
+
+async function updatePieceField(rowIndex, col, value) {
+  const p = programmPieces.find((x) => x.rowIndex === rowIndex);
+  if (!p) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmSheetRange(`${col}${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    if (col === "D") p.komponist = value;
+    if (col === "E") p.titel = value;
+    setStatus("Gespeichert.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+async function cyclePieceStatus(rowIndex) {
+  const p = programmPieces.find((x) => x.rowIndex === rowIndex);
+  if (!p) return;
+  const currentIdx = PIECE_STATUS_ORDER.indexOf(p.status);
+  const next = PIECE_STATUS_ORDER[(currentIdx + 1) % PIECE_STATUS_ORDER.length];
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmSheetRange(`F${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[next]] }),
+    });
+    p.status = next;
+    renderProgrammheft();
+  } catch (e) {
+    setStatus("Status konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+async function deletePiece(rowIndex) {
+  const p = programmPieces.find((x) => x.rowIndex === rowIndex);
+  if (!p) return;
+  const label = [p.komponist, p.titel].filter(Boolean).join(" — ") || "dieses Stück";
+  if (!window.confirm(`"${label}" wirklich aus dem Programm entfernen?`)) return;
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmSheetRange(`A${rowIndex}:G${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [["", "", "", "", "", "", ""]] }),
+    });
+    programmPieces = programmPieces.filter((x) => x.rowIndex !== rowIndex);
+    setStatus("Stück entfernt.");
+    renderProgrammheft();
+  } catch (e) {
+    setStatus("Stück konnte nicht entfernt werden: " + e.message, true);
+  }
+}
+
+async function persistPieceOrder(orderedRowIndexes) {
+  const updates = orderedRowIndexes.map((rowIndex, i) => ({
+    range: programmSheetRange(`C${rowIndex}`),
+    values: [[i + 1]],
+  }));
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values:batchUpdate`;
+  try {
+    await apiFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valueInputOption: "RAW", data: updates }),
+    });
+    orderedRowIndexes.forEach((rowIndex, i) => {
+      const p = programmPieces.find((x) => x.rowIndex === rowIndex);
+      if (p) p.position = i + 1;
+    });
+    setStatus("Reihenfolge gespeichert.");
+  } catch (e) {
+    setStatus("Reihenfolge konnte nicht gespeichert werden: " + e.message, true);
+  }
+}
+
+async function setProgrammFinal(project, isFinal) {
+  const pieces = piecesOfEvent(project);
+  if (pieces.length === 0) {
+    setStatus("Erst Stücke anlegen, dann als final markieren.", true);
+    renderProgrammheft();
+    return;
+  }
+
+  const updates = pieces.map((p) => ({
+    range: programmSheetRange(`G${p.rowIndex}`),
+    values: [[isFinal ? "ja" : "nein"]],
+  }));
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values:batchUpdate`;
+  try {
+    await apiFetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valueInputOption: "RAW", data: updates }),
+    });
+    pieces.forEach((p) => { p.final = isFinal; });
+    setStatus(isFinal ? "Programm als final markiert." : "Final-Markierung aufgehoben.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
