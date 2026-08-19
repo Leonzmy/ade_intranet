@@ -1,33 +1,40 @@
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f4f4f6;
-  --border: #e6e6e9;
-  --border-soft: #eeeef1;
-  --text: #16181d;
-  --text-secondary: #5c5f66;
-  --text-muted: #9296a0;
-  --accent: #d8434f;
+  --surface-2: #f2f3f7;
+  --border: #dfe1ea;
+  --border-soft: #ebedf3;
+  --text: #14161c;
+  --text-secondary: #575b68;
+  --text-muted: #8b90a0;
+
+  --accent: #e5233a;
+  --accent-deep: #c01329;
   --accent-text: #ffffff;
-  --danger: #a81f2c;
-  --danger-bg: #fbe4e6;
-  --warning: #a85c08;
-  --warning-bg: #fdf0e0;
-  --neutral-bg: #f3f4f6;
+  --accent-bg: #ffe8eb;
 
-  --chrome: #2b2e35;
-  --chrome-2: #363a43;
-  --chrome-border: #3e424b;
-  --chrome-text: #c7cad1;
-  --chrome-text-muted: #8b909a;
+  --danger: #d01b30;
+  --danger-bg: #ffe6e9;
+  --warning: #d97706;
+  --warning-bg: #fff1dd;
+  --success: #12875a;
+  --success-bg: #dcf5e9;
 
-  --shadow-card: 0 1px 2px rgba(20, 25, 35, .07), 0 3px 10px rgba(20, 25, 35, .05);
-  --shadow-raised: 0 1px 3px rgba(20, 25, 35, .10), 0 8px 24px rgba(20, 25, 35, .08);
+  --neutral-bg: #eef0f6;
+
+  --chrome: #23262f;
+  --chrome-2: #2f3340;
+  --chrome-border: #3a3f4d;
+  --chrome-text: #c9cddb;
+  --chrome-text-muted: #868c9e;
+
+  --shadow-card: 0 1px 2px rgba(23, 27, 40, .08), 0 4px 14px rgba(23, 27, 40, .07);
+  --shadow-raised: 0 2px 4px rgba(23, 27, 40, .12), 0 12px 32px rgba(23, 27, 40, .12);
 
   --radius: 10px;
   --sidebar-w: 210px;
   --font: "IBM Plex Sans", -apple-system, sans-serif;
-  --font-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  --font-display: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 }
 
@@ -246,7 +253,11 @@ body {
   border-color: var(--accent);
 }
 
-.btn.primary:hover { background: #b81f32; border-color: #b81f32; }
+.btn.primary {
+  box-shadow: 0 1px 2px rgba(197, 20, 45, .28), 0 3px 10px rgba(197, 20, 45, .20);
+}
+
+.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
 
 main {
   flex: 1;
@@ -264,9 +275,22 @@ main {
 
 .view-title {
   font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 1.25rem;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--text);
+}
+
+.view-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin: 0 0 1.75rem;
 }
 
 .placeholder-view {
@@ -294,14 +318,19 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 16px 18px;
   box-shadow: var(--shadow-card);
 }
 
+.dashboard-stat.overdue { background: var(--danger-bg); border-color: transparent; }
+.dashboard-stat.week { background: var(--warning-bg); border-color: transparent; }
+
 .dashboard-stat .num {
   font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 600;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .dashboard-stat.overdue .num { color: var(--danger); }
@@ -596,9 +625,9 @@ main {
 
 .event-card-title {
   font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .event-completion {
@@ -608,7 +637,7 @@ main {
   border-radius: 999px;
 }
 
-.event-completion.complete { background: #e6f4ea; color: #1a7a3c; }
+.event-completion.complete { background: var(--success-bg); color: var(--success); }
 
 .event-date-row {
   display: flex;
@@ -727,8 +756,9 @@ main {
 
 .status-pill.static { cursor: default; }
 
-.status-pill.vorhanden { background: #e6f4ea; color: #1a7a3c; }
+.status-pill.vorhanden { background: var(--success-bg); color: var(--success); }
 .status-pill.fehlt { background: var(--danger-bg); color: var(--danger); }
+.status-pill.vorhanden { background: var(--success-bg); color: var(--success); }
 .status-pill.in-arbeit { background: var(--warning-bg); color: var(--warning); }
 
 /* ---------- Rider-Modal ---------- */
@@ -1322,7 +1352,7 @@ details summary {
   border-radius: 999px;
 }
 
-.contract-person-status.done { background: #e6f4ea; color: #1a7a3c; }
+.contract-person-status.done { background: var(--success-bg); color: var(--success); }
 .contract-person-status.pending { background: var(--neutral-bg); color: var(--text-muted); }
 
 .contract-contact-info {
@@ -1492,7 +1522,7 @@ details summary {
   white-space: nowrap;
 }
 
-.ph-badge.ok { background: #e6f4ea; color: #1a7a3c; cursor: pointer; }
+.ph-badge.ok { background: var(--success-bg); color: var(--success); cursor: pointer; }
 .ph-badge.missing { background: var(--danger-bg); color: var(--danger); }
 
 .ph-link-btn {
@@ -1558,19 +1588,19 @@ details summary {
 /* ---------- Termin-Kategorien ---------- */
 
 .legend-dot.legend-orga { background: #2f5fa8; }
-.legend-dot.legend-probe { background: #1a7a3c; }
+.legend-dot.legend-probe { background: var(--success); }
 .legend-dot.legend-konzert { background: #d6293e; }
 .legend-dot.legend-besuch { background: #b5650a; }
 
 .cal-chip { cursor: pointer; }
 .cal-chip.is-orga { background: #e8eef8; color: #2f5fa8; }
-.cal-chip.is-probe { background: #e6f4ea; color: #1a7a3c; }
+.cal-chip.is-probe { background: var(--success-bg); color: var(--success); }
 .cal-chip.is-konzert { background: #fbe7ea; color: #d6293e; }
 .cal-chip.is-besuch { background: #fdf1e2; color: #b5650a; }
 
 .cal-week-event { cursor: pointer; }
 .cal-week-event.is-orga { background: #e8eef8; color: #2f5fa8; }
-.cal-week-event.is-probe { background: #e6f4ea; color: #1a7a3c; }
+.cal-week-event.is-probe { background: var(--success-bg); color: var(--success); }
 .cal-week-event.is-konzert { background: #fbe7ea; color: #d6293e; }
 .cal-week-event.is-besuch { background: #fdf1e2; color: #b5650a; }
 
@@ -1617,7 +1647,7 @@ details summary {
 
 .next-event-card:hover { border-color: var(--text-secondary); }
 .next-event-card.is-orga { border-left-color: #2f5fa8; }
-.next-event-card.is-probe { border-left-color: #1a7a3c; }
+.next-event-card.is-probe { border-left-color: var(--success); }
 .next-event-card.is-konzert { border-left-color: #d6293e; }
 .next-event-card.is-besuch { border-left-color: #b5650a; }
 
@@ -1758,7 +1788,7 @@ details summary {
 
 .piece-status.idee { background: var(--surface-2); color: var(--text-muted); }
 .piece-status.zustimmung { background: var(--warning-bg); color: var(--warning); border-color: transparent; }
-.piece-status.bestaetigt { background: #e6f4ea; color: #1a7a3c; border-color: transparent; }
+.piece-status.bestaetigt { background: var(--success-bg); color: var(--success); border-color: transparent; }
 
 .piece-delete {
   border: none;
