@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -192,12 +192,12 @@
       <div id="view-contracts" class="view hidden">
         <h2 class="view-title">Verträge</h2>
 
-        <div class="inv-section-title">Vorlagen</div>
-        <div id="templates-list" class="inv-table"></div>
-
-        <div class="inv-section-title inv-section-spaced">Personen</div>
-        <p class="inv-hint">Sortiert nach Funktion → Event → Name. Person anklicken, um einen Vertrag zu erstellen.</p>
         <div id="contracts-browser"></div>
+
+        <details class="templates-details">
+          <summary class="templates-summary"><i class="ti ti-file-text"></i> Vorlagen</summary>
+          <div id="templates-list" class="inv-table"></div>
+        </details>
       </div>
 
       <div id="view-programmheft" class="view hidden">
@@ -280,6 +280,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
