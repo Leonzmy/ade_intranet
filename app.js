@@ -33,6 +33,7 @@ let festivalList = [];  // ["ade #19", ...]
 let calViewMode = "month"; // "month" | "week"
 let calAnchor = new Date(); // Referenzdatum für aktuelle Ansicht
 let lastCalendarEvents = [];
+let lastLoadedEvents = []; // alle Events der aktuellen Ansicht (für Detail-Modal)
 
 const els = {};
 
@@ -119,6 +120,13 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.contractModalClose, closeContractModal);
   bindClick(els.contractGenerateBtn, handleGenerateContract);
   bindClick(document.getElementById("bio-modal-close"), closeBioModal);
+  bindClick(document.getElementById("termin-modal-close"), closeTerminModal);
+  const terminModalEl = document.getElementById("termin-modal");
+  if (terminModalEl) {
+    terminModalEl.addEventListener("click", (e) => {
+      if (e.target === terminModalEl) closeTerminModal();
+    });
+  }
   const bioModalEl = document.getElementById("bio-modal");
   if (bioModalEl) {
     bioModalEl.addEventListener("click", (e) => {
@@ -240,6 +248,7 @@ async function loadStammdaten() {
     fillSelect(els.projectSelect, projectList);
     fillSelect(els.festivalSelect, festivalList, CONFIG.DEFAULT_FESTIVAL);
     fillSelect(els.assigneeSelect, peopleList.map((p) => p.name));
+    fillAttendeeSelect();
   } catch (e) {
     setStatus("Stammdaten (Personen/Projekte) konnten nicht geladen werden: " + e.message, true);
   }
@@ -439,6 +448,26 @@ function isDeadlineEvent(ev) {
   return ev.extendedProperties?.private?.fdSource === "deadline";
 }
 
+const EVENT_CATEGORIES = {
+  "Organisationstreffen": { cls: "orga", colorId: "9" },   // Blau
+  "Probe": { cls: "probe", colorId: "10" },                // Grün
+  "Konzert": { cls: "konzert", colorId: "11" },            // Rot
+  "Konzertbesuch": { cls: "besuch", colorId: "5" },        // Gelb
+};
+
+// Kategorie aus den erweiterten Eigenschaften lesen; bei Terminen, die direkt
+// in Google Calendar angelegt wurden, gibt es keine — dann "sonstige".
+function categoryOf(ev) {
+  const cat = ev.extendedProperties?.private?.fdCategory;
+  return cat && EVENT_CATEGORIES[cat] ? cat : null;
+}
+
+function categoryClassOf(ev) {
+  if (isDeadlineEvent(ev)) return "";
+  const cat = categoryOf(ev);
+  return cat ? `is-${EVENT_CATEGORIES[cat].cls}` : "is-event";
+}
+
 function setCalView(mode) {
   calViewMode = mode;
   els.calViewMonth.classList.toggle("active", mode === "month");
@@ -520,8 +549,8 @@ function renderMonthGrid(gridStart, events, targetEl, maxChips) {
 
     const chips = shown
       .map((ev) => {
-        const cls = isDeadlineEvent(ev) ? "" : "is-event";
-        return `<div class="cal-chip ${cls}" title="${escapeHtml(ev.summary || "")}">${escapeHtml(ev.summary || "(ohne Titel)")}</div>`;
+        const cls = categoryClassOf(ev);
+        return `<div class="cal-chip ${cls}" data-event-id="${escapeHtml(ev.id)}" title="${escapeHtml(ev.summary || "")}">${escapeHtml(ev.summary || "(ohne Titel)")}</div>`;
       })
       .join("");
     const more = extra > 0 ? `<div class="cal-chip-more">+${extra} mehr</div>` : "";
@@ -534,6 +563,13 @@ function renderMonthGrid(gridStart, events, targetEl, maxChips) {
 
   const gridClass = targetEl === els.calGrid ? "cal-month-grid" : "cal-month-grid mini";
   targetEl.innerHTML = `<div class="${gridClass}">${html}</div>`;
+
+  if (targetEl === els.calGrid) {
+    lastLoadedEvents = events;
+    targetEl.querySelectorAll("[data-event-id]").forEach((el) => {
+      el.addEventListener("click", () => openTerminModal(el.dataset.eventId));
+    });
+  }
 }
 
 function renderWeekGrid(weekStart, events) {
@@ -558,10 +594,11 @@ function renderWeekGrid(weekStart, events) {
     const items = dayEvents
       .map((ev) => {
         const isDeadline = isDeadlineEvent(ev);
+        const cls = isDeadline ? "is-deadline" : categoryClassOf(ev);
         const time = ev.start.dateTime
           ? new Date(ev.start.dateTime).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
           : "ganztägig";
-        return `<div class="cal-week-event ${isDeadline ? "is-deadline" : ""}">
+        return `<div class="cal-week-event ${cls}" data-event-id="${escapeHtml(ev.id)}">
           <span class="cal-week-event-time">${time}</span>
           ${escapeHtml(ev.summary || "(ohne Titel)")}
         </div>`;
@@ -575,6 +612,10 @@ function renderWeekGrid(weekStart, events) {
   }
 
   els.calGrid.innerHTML = `<div class="cal-week-grid">${html}</div>`;
+  lastLoadedEvents = events;
+  els.calGrid.querySelectorAll("[data-event-id]").forEach((el) => {
+    el.addEventListener("click", () => openTerminModal(el.dataset.eventId));
+  });
 }
 
 async function handleNewEvent(e) {
@@ -583,6 +624,12 @@ async function handleNewEvent(e) {
   const title = form.title.value.trim();
   const date = form.date.value;
   const time = form.time.value;
+  const category = form.category.value;
+  const location = form.location.value.trim();
+  const zoomLink = form.zoomLink.value.trim();
+  const description = form.description.value.trim();
+  const duration = parseInt(form.duration.value, 10) || 60;
+  const attendeeEmails = Array.from(form.attendees.selectedOptions).map((o) => o.value).filter(Boolean);
 
   if (!title || !date) {
     setStatus("Titel und Datum sind Pflichtfelder für einen Termin.", true);
@@ -595,11 +642,10 @@ async function handleNewEvent(e) {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const startDateTime = `${date}T${time}:00`;
 
-    // Ende = Start + 1 Stunde, bewusst über lokale Datumsteile berechnet.
-    // toISOString() würde nach UTC umrechnen — kombiniert mit timeZone unten
-    // ergäbe das ein Ende VOR dem Start (Fehler "timeRangeEmpty").
+    // Ende bewusst über lokale Datumsteile berechnen — toISOString() würde
+    // nach UTC umrechnen und ein Ende VOR dem Start ergeben.
     const endDate = new Date(`${date}T${time}:00`);
-    endDate.setHours(endDate.getHours() + 1);
+    endDate.setMinutes(endDate.getMinutes() + duration);
     const pad = (n) => String(n).padStart(2, "0");
     const endDateTime = `${dateKey(endDate)}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}:00`;
 
@@ -616,15 +662,33 @@ async function handleNewEvent(e) {
     };
   }
 
+  // Kategorie als Farbe und als unsichtbare Markierung mitspeichern
+  const catDef = EVENT_CATEGORIES[category];
+  if (catDef) {
+    body.colorId = catDef.colorId;
+    body.extendedProperties = { private: { fdCategory: category } };
+  }
+  if (location) body.location = location;
+
+  const descParts = [];
+  if (description) descParts.push(description);
+  if (zoomLink) descParts.push(`Zoom: ${zoomLink}`);
+  if (descParts.length) body.description = descParts.join("\n\n");
+
+  if (attendeeEmails.length) {
+    body.attendees = attendeeEmails.map((email) => ({ email }));
+  }
+
   try {
-    await apiFetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events`, {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?sendUpdates=${attendeeEmails.length ? "all" : "none"}`;
+    await apiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     form.reset();
     els.newEventForm.classList.add("hidden");
-    setStatus("Termin gespeichert.");
+    setStatus(attendeeEmails.length ? "Termin gespeichert, Einladungen verschickt." : "Termin gespeichert.");
     await loadCalendar();
   } catch (e) {
     setStatus("Termin konnte nicht gespeichert werden: " + e.message, true);
@@ -716,6 +780,7 @@ function renderDashboard() {
     row.addEventListener("click", () => switchView("tasks"));
   });
 
+  renderNextEvent();
   renderDashboardCalendar();
 }
 
@@ -2366,5 +2431,149 @@ async function saveProgrammtext(rowIndex, value) {
     if (statusEl) statusEl.textContent = "Gespeichert.";
   } catch (e) {
     if (statusEl) statusEl.textContent = "Fehler beim Speichern: " + e.message;
+  }
+}
+
+// ---------- Termin-Detailansicht ----------
+
+function findLoadedEvent(eventId) {
+  return lastLoadedEvents.find((ev) => ev.id === eventId);
+}
+
+function extractZoomLink(description) {
+  if (!description) return null;
+  const match = description.match(/https?:\/\/[^\s]*zoom[^\s]*/i);
+  return match ? match[0] : null;
+}
+
+function openTerminModal(eventId) {
+  const ev = findLoadedEvent(eventId);
+  if (!ev) return;
+
+  document.getElementById("termin-modal-title").textContent = ev.summary || "(ohne Titel)";
+
+  const rows = [];
+
+  // Zeitpunkt
+  if (ev.start.dateTime) {
+    const start = new Date(ev.start.dateTime);
+    const end = ev.end?.dateTime ? new Date(ev.end.dateTime) : null;
+    const dateStr = start.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    const timeStr = start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      + (end ? " – " + end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "");
+    rows.push({ icon: "calendar-event", label: "Wann", value: `${dateStr}<br>${timeStr}` });
+  } else {
+    const start = new Date(ev.start.date + "T00:00:00");
+    rows.push({
+      icon: "calendar-event",
+      label: "Wann",
+      value: start.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }) + " (ganztägig)",
+    });
+  }
+
+  const cat = categoryOf(ev);
+  if (cat) rows.push({ icon: "tag", label: "Kategorie", value: escapeHtml(cat) });
+  if (isDeadlineEvent(ev)) rows.push({ icon: "alarm", label: "Typ", value: "Aufgaben-Deadline" });
+
+  if (ev.location) rows.push({ icon: "map-pin", label: "Ort", value: escapeHtml(ev.location) });
+
+  const zoom = extractZoomLink(ev.description) || ev.hangoutLink;
+  if (zoom) {
+    rows.push({
+      icon: "video",
+      label: "Video",
+      value: `<a href="${escapeHtml(zoom)}" target="_blank" rel="noopener">Meeting beitreten</a>`,
+    });
+  }
+
+  if (ev.attendees && ev.attendees.length) {
+    const list = ev.attendees
+      .map((a) => {
+        const name = a.displayName || a.email;
+        const statusMap = { accepted: "zugesagt", declined: "abgesagt", tentative: "vorläufig", needsAction: "offen" };
+        return `<div class="termin-attendee">${escapeHtml(name)} <span class="termin-attendee-status">${statusMap[a.responseStatus] || ""}</span></div>`;
+      })
+      .join("");
+    rows.push({ icon: "users", label: "Teilnehmende", value: list });
+  }
+
+  if (ev.description) {
+    // Zoom-Zeile nicht doppelt anzeigen
+    const descWithoutZoom = ev.description.replace(/Zoom:\s*https?:\/\/[^\s]*/i, "").trim();
+    if (descWithoutZoom) {
+      rows.push({ icon: "note", label: "Notizen", value: escapeHtml(descWithoutZoom).replace(/\n/g, "<br>") });
+    }
+  }
+
+  document.getElementById("termin-modal-body").innerHTML = rows
+    .map(
+      (r) => `<div class="termin-row">
+        <div class="termin-row-label"><i class="ti ti-${r.icon}"></i> ${r.label}</div>
+        <div class="termin-row-value">${r.value}</div>
+      </div>`
+    )
+    .join("");
+
+  const gcalLink = document.getElementById("termin-gcal-link");
+  gcalLink.href = ev.htmlLink || "#";
+  gcalLink.style.display = ev.htmlLink ? "" : "none";
+
+  document.getElementById("termin-modal").classList.remove("hidden");
+}
+
+function closeTerminModal() {
+  document.getElementById("termin-modal").classList.add("hidden");
+}
+
+// Teilnehmer-Auswahl im Formular aus den Stammdaten befüllen
+function fillAttendeeSelect() {
+  const sel = document.getElementById("event-attendees-select");
+  if (!sel) return;
+  const withEmail = peopleList.filter((p) => p.email);
+  sel.innerHTML = withEmail
+    .map((p) => `<option value="${escapeHtml(p.email)}">${escapeHtml(p.name)}</option>`)
+    .join("");
+  if (withEmail.length === 0) {
+    sel.innerHTML = `<option value="" disabled>Keine E-Mail-Adressen in den Stammdaten hinterlegt</option>`;
+  }
+}
+
+// Nächsten anstehenden Termin fürs Dashboard rendern
+function renderNextEvent() {
+  const container = document.getElementById("dashboard-next-event");
+  if (!container) return;
+
+  const now = new Date();
+  const upcoming = (lastCalendarEvents || [])
+    .filter((ev) => !isDeadlineEvent(ev))
+    .map((ev) => ({ ev, when: new Date(ev.start.dateTime || ev.start.date + "T00:00:00") }))
+    .filter((x) => x.when >= new Date(now.toDateString()))
+    .sort((a, b) => a.when - b.when);
+
+  if (upcoming.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  const { ev, when } = upcoming[0];
+  const cat = categoryOf(ev);
+  const catClass = cat ? `is-${EVENT_CATEGORIES[cat].cls}` : "is-event";
+  const dateStr = when.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long" });
+  const timeStr = ev.start.dateTime
+    ? when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr"
+    : "ganztägig";
+
+  container.innerHTML = `<div class="next-event-card ${catClass}" data-next-event-id="${escapeHtml(ev.id)}">
+    <div class="next-event-label">Nächster Termin</div>
+    <div class="next-event-title">${escapeHtml(ev.summary || "(ohne Titel)")}</div>
+    <div class="next-event-meta">${dateStr} · ${timeStr}${ev.location ? " · " + escapeHtml(ev.location) : ""}</div>
+  </div>`;
+
+  const card = container.querySelector("[data-next-event-id]");
+  if (card) {
+    card.addEventListener("click", () => {
+      lastLoadedEvents = lastCalendarEvents;
+      openTerminModal(ev.id);
+    });
   }
 }
