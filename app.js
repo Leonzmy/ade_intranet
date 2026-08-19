@@ -594,10 +594,15 @@ async function handleNewEvent(e) {
   if (time) {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const startDateTime = `${date}T${time}:00`;
-    const [h, m] = time.split(":").map(Number);
+
+    // Ende = Start + 1 Stunde, bewusst über lokale Datumsteile berechnet.
+    // toISOString() würde nach UTC umrechnen — kombiniert mit timeZone unten
+    // ergäbe das ein Ende VOR dem Start (Fehler "timeRangeEmpty").
     const endDate = new Date(`${date}T${time}:00`);
     endDate.setHours(endDate.getHours() + 1);
-    const endDateTime = endDate.toISOString().slice(0, 19);
+    const pad = (n) => String(n).padStart(2, "0");
+    const endDateTime = `${dateKey(endDate)}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}:00`;
+
     body = {
       summary: title,
       start: { dateTime: startDateTime, timeZone: tz },
