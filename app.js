@@ -1,1922 +1,313 @@
-:root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f2f3f7;
-  --border: #dfe1ea;
-  --border-soft: #ebedf3;
-  --text: #14161c;
-  --text-secondary: #575b68;
-  --text-muted: #8b90a0;
-
-  --accent: #e5233a;
-  --accent-deep: #c01329;
-  --accent-text: #ffffff;
-  --accent-bg: #ffe8eb;
-
-  --danger: #d01b30;
-  --danger-bg: #ffe6e9;
-  --warning: #d97706;
-  --warning-bg: #fff1dd;
-  --success: #12875a;
-  --success-bg: #dcf5e9;
-
-  --neutral-bg: #eef0f6;
-
-  --chrome: #23262f;
-  --chrome-2: #2f3340;
-  --chrome-border: #3a3f4d;
-  --chrome-text: #c9cddb;
-  --chrome-text-muted: #868c9e;
-
-  --shadow-card: 0 1px 2px rgba(23, 27, 40, .08), 0 4px 14px rgba(23, 27, 40, .07);
-  --shadow-raised: 0 2px 4px rgba(23, 27, 40, .12), 0 12px 32px rgba(23, 27, 40, .12);
-
-  --radius: 10px;
-  --sidebar-w: 210px;
-  --font: "IBM Plex Sans", -apple-system, sans-serif;
-  --font-display: "Bricolage Grotesque", "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: var(--font);
-  background: var(--neutral-bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-.topbar-slim {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 46px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--chrome-border);
-  background: var(--chrome);
-  z-index: 30;
-}
-
-.topbar-slim-account {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.festival-badge.small {
-  padding: 5px 10px;
-  font-size: 11px;
-}
-
-.topbar-slim span {
-  font-size: 12px;
-  color: var(--chrome-text-muted);
-}
-
-.topbar-slim .btn {
-  background: transparent;
-  border-color: var(--chrome-border);
-  color: var(--chrome-text);
-}
-
-.topbar-slim .btn:hover {
-  border-color: var(--chrome-text-muted);
-  background: var(--chrome-2);
-}
-
-.topbar-slim .festival-badge {
-  border-color: var(--chrome-border);
-  border-left-color: var(--accent);
-  color: var(--chrome-text);
-  background: var(--chrome-2);
-}
-
-.topbar-slim .badge-urgent { color: #ff5f6d; }
-.topbar-slim .badge-divider { color: var(--chrome-text-muted); }
-
-.app-body {
-  display: flex;
-  flex: 1;
-  padding-top: 46px;
-}
-
-.sidebar {
-  width: var(--sidebar-w);
-  flex-shrink: 0;
-  background: var(--chrome);
-  border-right: 1px solid var(--chrome-border);
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 46px;
-  left: 0;
-  bottom: 0;
-  overflow-y: auto;
-  z-index: 20;
-}
-
-.sidebar-header { padding: 20px 16px 0; }
-
-.sidebar-stub {
-  height: 1px;
-  margin: 18px 4px 6px;
-  background: repeating-linear-gradient(
-    to right, var(--chrome-border) 0 6px, transparent 6px 12px
-  );
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 12px;
-  flex: 1;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 7px 11px;
-  border-radius: var(--radius);
-  border: none;
-  background: transparent;
-  color: var(--chrome-text);
-  text-align: left;
-  cursor: pointer;
-  transition: background .12s ease, color .12s ease;
-}
-
-.nav-item i { font-size: 16px; width: 17px; text-align: center; }
-
-.nav-item:hover { background: var(--chrome-2); color: #fff; }
-
-.nav-item.active {
-  background: var(--chrome-2);
-  color: #fff;
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.sidebar-footer {
-  padding: 14px 16px;
-  border-top: 1px solid var(--chrome-border);
-}
-
-.sidebar-footer .subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  word-break: break-all;
-}
-
-.sidebar-footer .btn { width: 100%; }
-
-.festival-badge {
-  font-family: var(--font-display);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  white-space: nowrap;
-}
-
-.login-badge { margin: 0 auto; }
-
-.badge-divider { color: var(--text-muted); margin: 0 2px; }
-
-.badge-urgent {
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-#login-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  gap: 1rem;
-  text-align: center;
-  padding: 0 1.5rem;
-}
-
-#login-screen h1 {
-  font-family: var(--font-display);
-  font-size: 26px;
-  margin: 0.25rem 0 0;
-}
-
-#login-screen p {
-  color: var(--text-secondary);
-  max-width: 380px;
-  font-size: 14px;
-}
-
-.btn {
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 10px 18px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.btn:hover { border-color: var(--text-secondary); }
-
-.btn.primary {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
-}
-
-.btn.primary {
-  box-shadow: 0 1px 2px rgba(197, 20, 45, .28), 0 3px 10px rgba(197, 20, 45, .20);
-}
-
-.btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
-
-main {
-  flex: 1;
-  max-width: 1000px;
-  margin-left: calc(var(--sidebar-w) + 1.75rem);
-  margin-right: auto;
-  padding: 2rem 1.75rem 2rem 0;
-  width: 100%;
-}
-
-#view-tasks, #view-dashboard, #view-calendar {
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.view-title {
-  font-family: var(--font-display);
-  font-size: 38px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  line-height: 1;
-  margin: 0 0 10px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--text);
-}
-
-.view-eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  margin: 0 0 1.75rem;
-}
-
-.placeholder-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 5rem 1rem;
-  color: var(--text-muted);
-}
-
-.placeholder-view i { font-size: 32px; margin-bottom: 10px; color: var(--text-muted); }
-.placeholder-view h2 { font-family: var(--font-display); font-size: 18px; color: var(--text-secondary); margin: 0 0 4px; }
-.placeholder-view p { font-size: 13px; margin: 0; }
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 1.75rem;
-}
-
-.dashboard-stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-card);
-}
-
-.dashboard-stat.overdue { background: var(--danger-bg); border-color: transparent; }
-.dashboard-stat.week { background: var(--warning-bg); border-color: transparent; }
-
-.dashboard-stat .num {
-  font-family: var(--font-display);
-  font-size: 34px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.dashboard-stat.overdue .num { color: var(--danger); }
-.dashboard-stat.week .num { color: var(--warning); }
-
-.dashboard-stat .label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.dashboard-section-title {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 10px;
-}
-
-.dashboard-tasks-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  margin-bottom: 1.5rem;
-  box-shadow: var(--shadow-card);
-}
-
-.dashboard-tasks-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.dashboard-tasks-header i { color: var(--accent); }
-
-.dashboard-task-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-}
-
-.dashboard-task-row:last-child { border-bottom: none; }
-
-.dashboard-task-row .title { font-size: 14px; font-weight: 500; }
-.dashboard-task-row .project { font-size: 12px; color: var(--text-secondary); }
-
-.dashboard-calendar-card {
-  cursor: pointer;
-  border-radius: var(--radius);
-  padding: 6px;
-  margin: -6px;
-}
-
-.dashboard-calendar-card:hover { background: var(--surface-2); }
-
-.dashboard-section-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.dashboard-cal-link {
-  font-size: 12px;
-  color: var(--accent);
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.cal-month-grid.mini {
-  pointer-events: none;
-}
-
-/* ---------- Inventar ---------- */
-
-.inv-section-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.inv-section-spaced { margin-top: 2rem; }
-
-.inv-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: -6px 0 12px;
-}
-
-.inv-category {
-  margin-bottom: 14px;
-}
-
-.inv-category summary {
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  padding: 10px 14px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.inv-category summary::-webkit-details-marker { display: none; }
-
-.inv-category summary::before {
-  content: "▸";
-  color: var(--text-muted);
-  transition: transform 0.15s ease;
-}
-
-.inv-category[open] summary::before { transform: rotate(90deg); }
-
-.inv-category[open] summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-.inv-category-count {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.inv-category .inv-table {
-  margin-bottom: 0;
-  border-top: none;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.inv-table {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
-
-.inv-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-soft);
-  background: var(--surface);
-}
-
-.inv-row:last-child { border-bottom: none; }
-.inv-row.inv-header { background: var(--surface-2); font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
-
-.inv-name { flex: 2; min-width: 0; font-size: 13.5px; font-weight: 500; }
-.inv-cat { flex: 1; font-size: 12px; color: var(--text-secondary); }
-.inv-avail { flex-shrink: 0; width: 90px; font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
-.inv-avail.low { color: var(--danger); font-weight: 600; }
-.inv-book-btn { flex-shrink: 0; }
-
-.inv-book-form {
-  display: none;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--neutral-bg);
-  border-bottom: 1px solid var(--border);
-}
-
-.inv-book-form.open { display: flex; }
-
-.inv-book-form {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.inv-book-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.inv-book-row select, .inv-book-row input {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.inv-book-row input[type="number"] { width: 70px; }
-
-.inv-book-availability {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-}
-
-.inv-book-availability.over { color: var(--danger); font-weight: 600; }
-
-.inv-bookings-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.inv-booking-entry {
-  font-size: 11px;
-  font-family: var(--font-mono);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 8px;
-  color: var(--text-secondary);
-}
-
-.inv-booking-empty { color: var(--text-muted); border: none; padding-left: 0; }
-
-.need-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 8px;
-  background: var(--surface);
-}
-
-.need-item .title { font-size: 14px; font-weight: 500; }
-.need-item .meta { font-size: 12px; color: var(--text-secondary); }
-
-#events-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 32px;
-}
-
-@media (max-width: 760px) {
-  #events-list { grid-template-columns: 1fr; }
-}
-
-.event-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 5px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.event-card.color-0 { border-left-color: #d6293e; }
-.event-card.color-0 .event-card-header { background: #fbe7ea; }
-.event-card.color-1 { border-left-color: #b5650a; }
-.event-card.color-1 .event-card-header { background: #fdf1e2; }
-.event-card.color-2 { border-left-color: #1a7a6e; }
-.event-card.color-2 .event-card-header { background: #e3f3f0; }
-.event-card.color-3 { border-left-color: #2f5fa8; }
-.event-card.color-3 .event-card-header { background: #e8eef8; }
-.event-card.color-4 { border-left-color: #6b4fa0; }
-.event-card.color-4 .event-card-header { background: #efe9f7; }
-
-.event-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-2);
-}
-
-.event-card-title {
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.event-completion {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-}
-
-.event-completion.complete { background: var(--success-bg); color: var(--success); }
-
-.event-date-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.event-date-row i { font-size: 15px; }
-
-.event-date-input {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.event-people {
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.event-people-field label {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 3px;
-}
-
-.event-people-input {
-  width: 100%;
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.contact-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1.3fr 1.3fr 0.9fr 36px;
-  gap: 10px;
-  align-items: center;
-}
-
-.contact-name { font-size: 13.5px; font-weight: 500; }
-.contact-role { font-size: 12.5px; color: var(--text-secondary); }
-
-.contact-static {
-  font-size: 13px;
-  color: var(--text);
-}
-
-.contact-link-btn {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 6px 8px;
-}
-
-.contact-link-btn:hover { color: var(--accent); border-color: var(--accent); }
-
-.event-completion.incomplete { background: var(--danger-bg); color: var(--danger); }
-
-.checklist-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 18px;
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.checklist-row:last-child { border-bottom: none; }
-
-.checklist-label {
-  font-size: 12.5px;
-  font-weight: 400;
-  color: var(--text-secondary);
-  width: 140px;
-  flex-shrink: 0;
-  line-height: 1.25;
-}
-
-.checklist-label-link {
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  color: var(--text);
-}
-
-.checklist-label-link:hover { color: var(--accent); }
-
-.status-pill {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.status-pill.static { cursor: default; }
-
-.status-pill.vorhanden { background: var(--success-bg); color: var(--success); }
-.status-pill.fehlt { background: var(--danger-bg); color: var(--danger); }
-.status-pill.vorhanden { background: var(--success-bg); color: var(--success); }
-.status-pill.in-arbeit { background: var(--warning-bg); color: var(--warning); }
-
-/* ---------- Rider-Modal ---------- */
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(26, 26, 26, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.modal-box {
-  background: var(--surface);
-  border-radius: var(--radius);
-  width: 480px;
-  max-width: 92vw;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 12px rgba(20,25,35,.16), 0 20px 60px rgba(20,25,35,.22);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
-
-.modal-body {
-  padding: 14px 18px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 18px;
-  border-top: 1px solid var(--border);
-  gap: 10px;
-}
-
-.modal-footer-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.rider-done-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.rider-list-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-}
-
-.rider-list-row span:first-child { flex: 1; min-width: 0; }
-
-.rider-delete-booking {
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 2px;
-  font-size: 14px;
-}
-
-.rider-delete-booking:hover { color: var(--danger); }
-
-.rider-list-row:last-child { border-bottom: none; }
-.rider-list-row .qty { font-family: var(--font-mono); color: var(--text-secondary); }
-
-.checklist-link {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.checklist-link-open {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 15px;
-}
-.checklist-link-open:hover { color: var(--accent); }
-
-.filter-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.filter-row .filters { display: flex; gap: 8px; }
-
-.filters button {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.filters button.active {
-  background: var(--surface-2);
-  color: var(--text);
-  border-color: var(--text-secondary);
-}
-
-.group { margin-bottom: 1.5rem; }
-
-.group-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.group-label .count { color: var(--text-muted); font-weight: 400; }
-
-.group-label.overdue { color: var(--danger); }
-.group-label.week { color: var(--warning); }
-.group-label.later { color: var(--text-secondary); }
-
-.task {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-
-.task input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--accent);
-}
-
-.task-body { flex: 1; min-width: 0; }
-
-.task-title { font-size: 14px; font-weight: 500; }
-.task-title.done { text-decoration: line-through; color: var(--text-muted); }
-
-.task-project { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-
-.task-due {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  padding: 3px 8px;
-  border-radius: var(--radius);
-  white-space: nowrap;
-}
-
-.task-due.overdue { color: var(--danger); background: var(--danger-bg); }
-.task-due.week { color: var(--warning); background: var(--warning-bg); }
-.task-due.later { color: var(--text-secondary); background: var(--neutral-bg); }
-.task-due.done { color: var(--text-muted); background: transparent; }
-
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.empty {
-  padding: 3rem 1rem;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-details summary {
-  font-size: 13px;
-  color: var(--text-muted);
-  cursor: pointer;
-  margin-bottom: 8px;
-}
-
-.event {
-  display: flex;
-  gap: 14px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 8px;
-  background: var(--surface);
-  align-items: center;
-}
-
-.event-date {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--accent);
-  min-width: 64px;
-}
-
-.event-title { font-size: 14px; font-weight: 500; }
-
-.new-task-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  margin-bottom: 1.5rem;
-}
-
-.new-task-form input, .new-task-form select, .new-task-form textarea {
-  font-family: var(--font);
-  font-size: 14px;
-  padding: 8px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.new-task-form textarea {
-  resize: vertical;
-  min-height: 44px;
-}
-
-.new-task-form .row { display: flex; gap: 8px; }
-.new-task-form .row > * { flex: 1; min-width: 0; width: 100%; }
-
-.status-msg {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-}
-
-.hidden { display: none !important; }
-
-.task-wrap { margin-bottom: 8px; }
-.task-wrap .task { margin-bottom: 0; }
-.task-main { cursor: pointer; transition: box-shadow .14s ease, border-color .14s ease; }
-.task-main:hover {
-  border-color: var(--border);
-  box-shadow: var(--shadow-raised);
-}
-
-.note-indicator {
-  font-size: 12px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  min-width: 28px;
-}
-
-.notes-panel {
-  border: 1px solid var(--border);
-  border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
-  background: var(--surface-2);
-  padding: 10px 14px;
-}
-
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.notes-empty {
-  font-size: 13px;
-  color: var(--text-muted);
-  padding: 4px 0;
-}
-
-.note-bubble {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 10px;
-}
-
-.note-meta {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  margin-bottom: 2px;
-}
-
-.note-text { font-size: 13px; }
-
-.notes-form {
-  display: flex;
-  gap: 8px;
-}
-
-.notes-form input {
-  flex: 1;
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 7px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-}
-
-.notes-form button {
-  font-size: 13px;
-  padding: 7px 14px;
-}
-
-.cal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 1rem;
-}
-
-.cal-nav { display: flex; align-items: center; gap: 8px; }
-.cal-nav .btn { padding: 6px 10px; }
-.cal-label { font-size: 15px; font-weight: 500; margin-left: 6px; }
-
-.cal-actions { display: flex; align-items: center; gap: 10px; }
-
-.cal-view-toggle {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.cal-view-toggle button {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px 12px;
-  border: none;
-  background: var(--surface);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.cal-view-toggle button.active { background: var(--accent); color: var(--accent-text); }
-
-.cal-legend {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.legend-item { display: flex; align-items: center; gap: 6px; }
-.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.legend-dot.legend-deadline { background: var(--danger); }
-.legend-dot.legend-event { background: var(--accent); }
-
-.cal-month-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-
-.cal-weekday-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: center;
-  padding-bottom: 4px;
-  font-weight: 500;
-}
-
-.cal-day {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  height: 100px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: hidden;
-}
-
-.cal-day.outside { background: var(--neutral-bg); }
-.cal-day.today { border-color: var(--accent); border-width: 2px; }
-
-.cal-day-num {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.cal-day.outside .cal-day-num { color: var(--text-muted); }
-
-.cal-chip {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--bg-accent, #fbe7ea);
-  color: var(--danger);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.cal-chip.is-event { background: var(--neutral-bg); color: var(--text); }
-
-.cal-chip-more { font-size: 11px; color: var(--text-muted); }
-
-.cal-week-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-}
-
-.cal-week-day {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px;
-  min-height: 160px;
-}
-
-.cal-week-day.today { border-color: var(--accent); border-width: 2px; }
-
-.cal-week-day-header {
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  color: var(--text-secondary);
-}
-
-.cal-week-event {
-  font-size: 12px;
-  padding: 4px 6px;
-  border-radius: 4px;
-  margin-bottom: 4px;
-  background: var(--neutral-bg);
-}
-
-.cal-week-event.is-deadline { background: var(--danger-bg); color: var(--danger); }
-
-.cal-week-event-time {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-muted);
-  display: block;
-}
-
-/* ---------- Verträge ---------- */
-
-.contract-role-group {
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.contract-role-header {
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 12px 16px;
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.contract-role-header::-webkit-details-marker { display: none; }
-.contract-role-header::before {
-  content: "▸";
-  color: var(--text-muted);
-  transition: transform 0.15s ease;
-  font-size: 13px;
-}
-.contract-role-group[open] > .contract-role-header::before { transform: rotate(90deg); }
-
-.contract-count {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: var(--neutral-bg);
-  padding: 2px 9px;
-  border-radius: 999px;
-}
-
-.contract-role-body { padding: 10px 16px 14px; }
-
-.contract-event-group {
-  margin-left: 4px;
-  margin-bottom: 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.contract-event-label {
-  cursor: pointer;
-  list-style: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  padding: 9px 12px;
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.contract-event-label::-webkit-details-marker { display: none; }
-.contract-event-label::before {
-  content: "▸";
-  color: var(--text-muted);
-  transition: transform 0.15s ease;
-  font-size: 11px;
-}
-.contract-event-group[open] > .contract-event-label::before { transform: rotate(90deg); }
-
-.contract-event-body { padding: 8px; background: var(--neutral-bg); }
-
-.contract-person-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 6px;
-  cursor: pointer;
-  background: var(--surface);
-}
-
-.contract-person-row:last-child { margin-bottom: 0; }
-.contract-person-row:hover { border-color: var(--accent); }
-
-.contract-person-name { font-size: 13.5px; font-weight: 500; }
-
-.contract-person-status {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 999px;
-}
-
-.contract-person-status.done { background: var(--success-bg); color: var(--success); }
-.contract-person-status.pending { background: var(--neutral-bg); color: var(--text-muted); }
-
-.contract-contact-info {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.contract-contact-info strong { color: var(--text); }
-
-.contract-fields-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.contract-field-card {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-}
-
-.contract-field-card label {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 6px;
-}
-
-.contract-field-card input {
-  width: 100%;
-  font-family: var(--font);
-  font-size: 14px;
-  padding: 6px 0;
-  border: none;
-  background: transparent;
-  color: var(--text);
-}
-
-.contract-field-card input:focus { outline: none; }
-.contract-field-card:focus-within { border-color: var(--accent); }
-
-.contract-result {
-  margin-top: 16px;
-  padding: 12px;
-  border-radius: var(--radius);
-  background: var(--neutral-bg);
-  font-size: 13px;
-}
-
-.contract-result a { color: var(--accent); font-weight: 500; margin-right: 14px; }
-
-.contract-status { font-size: 12px; color: var(--text-secondary); }
-
-.template-row {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.template-row:last-child { border-bottom: none; }
-
-.template-cat-link {
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font-display);
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.template-cat-link.muted {
-  color: var(--text);
-  text-decoration: none;
-  cursor: default;
-}
-
-.template-missing {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-muted);
-  font-family: var(--font);
-}
-
-
-/* ---------- Programmheft ---------- */
-
-.programmtext-input {
-  width: 100%;
-  font-family: var(--font);
-  font-size: 14px;
-  line-height: 1.55;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  resize: vertical;
-}
-
-.programmtext-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.ph-event-group {
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.ph-event-header {
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  padding: 12px 16px;
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ph-event-header::-webkit-details-marker { display: none; }
-.ph-event-header::before {
-  content: "▸";
-  color: var(--text-muted);
-  transition: transform 0.15s ease;
-  font-size: 13px;
-}
-.ph-event-group[open] > .ph-event-header::before { transform: rotate(90deg); }
-
-.ph-event-body { padding: 10px 14px 12px; }
-
-.ph-person-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 6px;
-  background: var(--surface);
-}
-
-.ph-person-row:last-child { margin-bottom: 0; }
-
-.ph-person-main { flex: 1; min-width: 0; }
-.ph-person-name { font-size: 13.5px; font-weight: 500; }
-.ph-person-role { font-size: 11.5px; color: var(--text-secondary); }
-
-.ph-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 9px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.ph-badge.ok { background: var(--success-bg); color: var(--success); cursor: pointer; }
-.ph-badge.missing { background: var(--danger-bg); color: var(--danger); }
-
-.ph-link-btn {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 5px 8px;
-  flex-shrink: 0;
-}
-
-.ph-link-btn:hover { color: var(--accent); border-color: var(--accent); }
-
-.bio-text {
-  font-size: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-#bio-modal-photo img {
-  max-width: 100%;
-  border-radius: var(--radius);
-  margin-bottom: 14px;
-}
-
-.ph-subsection-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
-}
-
-.ph-subsection-spaced { margin-top: 20px; }
-
-.people-toggle {
-  display: flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 6px;
-  width: fit-content;
-}
-
-.people-toggle-btn {
-  font-family: var(--font);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border: none;
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.people-toggle-btn.active {
-  background: var(--accent);
-  color: var(--accent-text);
-}
-
-/* ---------- Termin-Kategorien ---------- */
-
-.legend-dot.legend-orga { background: #2f5fa8; }
-.legend-dot.legend-probe { background: var(--success); }
-.legend-dot.legend-konzert { background: #d6293e; }
-.legend-dot.legend-besuch { background: #b5650a; }
-
-.cal-chip { cursor: pointer; }
-.cal-chip.is-orga { background: #e8eef8; color: #2f5fa8; }
-.cal-chip.is-probe { background: var(--success-bg); color: var(--success); }
-.cal-chip.is-konzert { background: #fbe7ea; color: #d6293e; }
-.cal-chip.is-besuch { background: #fdf1e2; color: #b5650a; }
-
-.cal-week-event { cursor: pointer; }
-.cal-week-event.is-orga { background: #e8eef8; color: #2f5fa8; }
-.cal-week-event.is-probe { background: var(--success-bg); color: var(--success); }
-.cal-week-event.is-konzert { background: #fbe7ea; color: #d6293e; }
-.cal-week-event.is-besuch { background: #fdf1e2; color: #b5650a; }
-
-/* ---------- Termin-Detailansicht ---------- */
-
-.termin-row {
-  display: flex;
-  gap: 14px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 13.5px;
-}
-
-.termin-row:last-child { border-bottom: none; }
-
-.termin-row-label {
-  width: 130px;
-  flex-shrink: 0;
-  color: var(--text-secondary);
-  font-size: 12.5px;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.termin-row-value { flex: 1; min-width: 0; line-height: 1.5; }
-.termin-row-value a { color: var(--accent); font-weight: 500; }
-
-.termin-attendee { padding: 2px 0; }
-.termin-attendee-status { color: var(--text-muted); font-size: 11.5px; }
-
-/* ---------- Nächster Termin (Dashboard) ---------- */
-
-.next-event-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--text-muted);
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  margin-bottom: 1.25rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-card);
-}
-
-.next-event-card:hover { border-color: var(--text-secondary); }
-.next-event-card.is-orga { border-left-color: #2f5fa8; }
-.next-event-card.is-probe { border-left-color: var(--success); }
-.next-event-card.is-konzert { border-left-color: #d6293e; }
-.next-event-card.is-besuch { border-left-color: #b5650a; }
-
-.next-event-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
-}
-
-.next-event-title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.next-event-meta { font-size: 12.5px; color: var(--text-secondary); }
-
-#event-attendees-select {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 6px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-}
-
-.btn-danger {
-  color: var(--danger);
-  border-color: var(--danger-bg);
-  background: var(--danger-bg);
-}
-
-.btn-danger:hover { border-color: var(--danger); }
-
-.rider-section-title {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
-
-.rider-section-spaced { margin-top: 18px; }
-
-.templates-details {
-  margin-top: 2rem;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-
-.templates-summary {
-  cursor: pointer;
-  list-style: none;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 0;
-}
-
-.templates-summary::-webkit-details-marker { display: none; }
-.templates-summary:hover { color: var(--text-secondary); }
-
-.templates-summary::after {
-  content: "▸";
-  font-size: 11px;
-  transition: transform 0.15s ease;
-}
-
-.templates-details[open] .templates-summary::after { transform: rotate(90deg); }
-
-.templates-details .inv-table { margin-top: 10px; margin-bottom: 0; }
-
-/* ---------- Programm (Stück-Reihenfolge) ---------- */
-
-.programm-block { margin-bottom: 20px; }
-
-.piece-list { margin-bottom: 10px; }
-
-.piece-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-bottom: 6px;
-  background: var(--surface);
-}
-
-.piece-row.dragging { opacity: 0.4; }
-
-.piece-handle {
-  cursor: grab;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-.piece-handle:active { cursor: grabbing; }
-
-.piece-input {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 5px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  min-width: 0;
-}
-
-.piece-input:first-of-type { flex: 1 1 0; }
-.piece-input:last-of-type { flex: 1.6 1 0; }
-
-.piece-status {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  width: 96px;
-  text-align: center;
-}
-
-.piece-status.idee { background: var(--surface-2); color: var(--text-muted); }
-.piece-status.zustimmung { background: var(--warning-bg); color: var(--warning); border-color: transparent; }
-.piece-status.bestaetigt { background: var(--success-bg); color: var(--success); border-color: transparent; }
-
-.piece-delete {
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 2px;
-  flex-shrink: 0;
-}
-
-.piece-delete:hover { color: var(--danger); }
-
-.programm-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ---------- Aufklappbare Checklisten-Untergruppe (Texte) ---------- */
-
-.checklist-subgroup { border-bottom: 1px solid var(--border); }
-.checklist-subgroup:last-child { border-bottom: none; }
-.checklist-subgroup .checklist-row { border-bottom: none; }
-
-.checklist-summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.checklist-summary::-webkit-details-marker { display: none; }
-
-.checklist-summary .checklist-label::before {
-  content: "▸ ";
-  color: var(--text-muted);
-  font-size: 10px;
-  transition: transform 0.15s ease;
-  display: inline-block;
-}
-
-.checklist-subgroup[open] > .checklist-summary .checklist-label::before {
-  transform: rotate(90deg);
-}
-
-.checklist-subrows {
-  background: var(--neutral-bg);
-  padding-left: 14px;
-}
-
-.checklist-subrows .checklist-row:not(:last-child) {
-  border-bottom: 1px solid var(--border);
-}
-
-.programm-actions-left { display: flex; gap: 8px; }
-
-.bio-credits {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 6px;
-  margin-bottom: 10px;
-}
-
-.checklist-summary .checklist-label {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.event-resp-icon { margin-left: auto; }
-
-.event-resp-select {
-  font-family: var(--font);
-  font-size: 13px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  max-width: 150px;
-}
-
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.dashboard-header .view-title { margin-bottom: 0; }
-
-.task-actions {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.task-delete {
-  font-family: var(--font);
-  font-size: 12px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 6px;
-  border-radius: var(--radius);
-}
-
-.task-delete:hover { color: var(--danger); background: var(--danger-bg); }
-
-/* ---------- Signatur ---------- */
-
-.sign-block {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.sign-block.signed { color: var(--success); }
-.sign-block .sign-meta { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); }
-.sign-block a { color: var(--accent); font-weight: 500; }
-
-.contract-person-status.created { background: var(--warning-bg); color: var(--warning); }
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Festival Dashboard</title>
+  <link rel="stylesheet" href="style.css?v=40" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://accounts.google.com/gsi/client"></script>
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="festival-badge login-badge">19. aDevantgarde-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
+    <h1>Festival Dashboard</h1>
+    <p>Aufgaben, Kalender und mehr an einem Ort — direkt über dein Google-Konto.</p>
+    <button id="login-btn" class="btn primary">Mit Google anmelden</button>
+  </div>
+
+  <div id="app" class="hidden app-shell">
+    <div class="topbar-slim">
+      <div class="festival-badge small">19. aDe-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
+      <div class="topbar-slim-account">
+        <span id="user-label"></span>
+        <button id="logout-btn" class="btn">Abmelden</button>
+      </div>
+    </div>
+
+    <div class="app-body">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-stub"></div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+        <button class="nav-item" data-view="calendar"><i class="ti ti-calendar-event"></i>Kalender</button>
+        <button class="nav-item" data-view="tasks"><i class="ti ti-checklist"></i>Aufgaben</button>
+        <button class="nav-item" data-view="events"><i class="ti ti-ticket"></i>Events</button>
+        <button class="nav-item" data-view="inventory"><i class="ti ti-package"></i>Inventar</button>
+        <button class="nav-item" data-view="contracts"><i class="ti ti-file-text"></i>Verträge</button>
+        <button class="nav-item" data-view="programmheft"><i class="ti ti-book"></i>Programmheft</button>
+        <button class="nav-item" data-view="contacts"><i class="ti ti-address-book"></i>Kontaktdaten</button>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="status-msg" id="status-msg"></div>
+
+      <div id="view-dashboard" class="view">
+        <div class="dashboard-header">
+          <h2 class="view-title">Dashboard</h2>
+          <div class="filters">
+            <button id="dash-filter-mine" class="active">Meine Aufgaben</button>
+            <button id="dash-filter-all">Alle</button>
+          </div>
+        </div>
+        <div id="dashboard-stats" class="dashboard-stats"></div>
+
+        <div id="dashboard-next-event"></div>
+
+        <div class="dashboard-tasks-card" id="dashboard-tasks-card">
+          <div class="dashboard-tasks-header">
+            <i class="ti ti-alert-circle"></i> <span id="dashboard-tasks-heading">Aktuelle Aufgaben</span>
+          </div>
+          <div id="dashboard-tasks-list"></div>
+        </div>
+
+        <div class="dashboard-calendar-card" id="dashboard-calendar-card">
+          <div class="dashboard-section-title-row">
+            <span class="dashboard-section-title">Kalender</span>
+            <span class="dashboard-cal-link">Zum Kalender <i class="ti ti-arrow-right"></i></span>
+          </div>
+          <div id="dashboard-mini-calendar"></div>
+        </div>
+      </div>
+
+      <div id="view-tasks" class="view hidden">
+        <form id="new-task-form" class="new-task-form">
+          <div class="row">
+            <input type="text" name="title" placeholder="Neue Aufgabe" required />
+            <select name="project" id="project-select">
+              <option value="">Projekt wählen…</option>
+            </select>
+            <select name="festival" id="festival-select">
+              <option value="">Festival wählen…</option>
+            </select>
+          </div>
+          <div class="row">
+            <select name="assigneeName" id="assignee-select">
+              <option value="">Zuständige Person…</option>
+            </select>
+            <input type="date" name="due" required />
+          </div>
+          <textarea name="notes" placeholder="Notizen (optional)" rows="2"></textarea>
+          <button type="submit" class="btn primary">Aufgabe hinzufügen</button>
+        </form>
+
+        <div class="filter-row">
+          <div class="filters">
+            <button id="filter-mine" class="active">Nur meine</button>
+            <button id="filter-all">Ganzes Team</button>
+          </div>
+        </div>
+
+        <div id="sections"></div>
+      </div>
+
+      <div id="view-calendar" class="view hidden">
+        <div class="cal-header">
+          <div class="cal-nav">
+            <button id="cal-prev" class="btn" aria-label="Zurück"><i class="ti ti-chevron-left"></i></button>
+            <button id="cal-today" class="btn">Heute</button>
+            <button id="cal-next" class="btn" aria-label="Weiter"><i class="ti ti-chevron-right"></i></button>
+            <span id="cal-label" class="cal-label"></span>
+          </div>
+          <div class="cal-actions">
+            <div class="cal-view-toggle">
+              <button id="cal-view-month" class="active">Monat</button>
+              <button id="cal-view-week">Woche</button>
+            </div>
+            <button id="cal-new-event-btn" class="btn primary">Neuer Termin</button>
+          </div>
+        </div>
+
+        <form id="new-event-form" class="new-task-form hidden">
+          <div class="row">
+            <input type="text" name="title" placeholder="Titel des Termins" required />
+            <select name="category" id="event-category-select">
+              <option value="Organisationstreffen">Organisationstreffen</option>
+              <option value="Probe">Probe</option>
+              <option value="Konzert">Konzert</option>
+              <option value="Konzertbesuch">Konzertbesuch</option>
+            </select>
+          </div>
+          <div class="row">
+            <input type="date" name="date" required />
+            <input type="time" name="time" placeholder="Uhrzeit (optional)" />
+            <input type="number" name="duration" placeholder="Dauer (Min.)" min="15" step="15" value="60" />
+          </div>
+          <div class="row">
+            <input type="text" name="location" placeholder="Ort (optional)" />
+            <input type="url" name="zoomLink" placeholder="Zoom-Link (optional)" />
+          </div>
+          <div class="row">
+            <select name="linkedEvent" id="event-linked-select">
+              <option value="">Keinem Event zugeordnet</option>
+            </select>
+          </div>
+          <div class="row">
+            <select name="attendees" id="event-attendees-select" multiple size="4"></select>
+          </div>
+          <textarea name="description" placeholder="Notizen zum Termin (optional)" rows="2"></textarea>
+          <button type="submit" class="btn primary">Termin speichern</button>
+        </form>
+
+        <div class="cal-legend">
+          <span class="legend-item"><span class="legend-dot legend-deadline"></span>Deadline</span>
+          <span class="legend-item"><span class="legend-dot legend-orga"></span>Organisationstreffen</span>
+          <span class="legend-item"><span class="legend-dot legend-probe"></span>Probe</span>
+          <span class="legend-item"><span class="legend-dot legend-konzert"></span>Konzert</span>
+          <span class="legend-item"><span class="legend-dot legend-besuch"></span>Konzertbesuch</span>
+        </div>
+
+        <div id="calendar-grid"></div>
+      </div>
+
+      <div id="view-events" class="view hidden">
+        <h2 class="view-title">Events</h2>
+        <p class="view-eyebrow" id="events-eyebrow"></p>
+        <div id="events-list"></div>
+      </div>
+
+      <div id="view-inventory" class="view hidden">
+        <h2 class="view-title">Inventar</h2>
+        <p class="view-eyebrow">Technik schwere reiter — Buchungen und externer Bedarf</p>
+
+        <div class="inv-section-title">Schwere Reiter — Technik-Katalog</div>
+        <div id="inventory-list" class="inv-table"></div>
+
+        <div class="inv-section-title inv-section-spaced">Zusätzlicher Bedarf</div>
+        <p class="inv-hint">Wird automatisch als Aufgabe im Aufgaben-Reiter angelegt.</p>
+
+        <form id="new-need-form" class="new-task-form">
+          <div class="row">
+            <input type="text" name="title" placeholder="Was wird gebraucht?" required />
+            <select name="project" id="need-project-select">
+              <option value="">Event wählen…</option>
+            </select>
+          </div>
+          <div class="row">
+            <select name="assigneeName" id="need-assignee-select">
+              <option value="">Wer kümmert sich?</option>
+            </select>
+            <input type="date" name="due" id="need-due-input" required />
+          </div>
+          <button type="submit" class="btn primary">Bedarf anlegen</button>
+        </form>
+
+        <div id="needs-list"></div>
+      </div>
+
+      <div id="view-contracts" class="view hidden">
+        <h2 class="view-title">Verträge</h2>
+        <p class="view-eyebrow" id="contracts-eyebrow"></p>
+
+        <div id="contracts-browser"></div>
+
+        <details class="templates-details">
+          <summary class="templates-summary"><i class="ti ti-file-text"></i> Vorlagen</summary>
+          <div id="templates-list" class="inv-table"></div>
+        </details>
+      </div>
+
+      <div id="view-programmheft" class="view hidden">
+        <h2 class="view-title">Programmheft</h2>
+        <p class="view-eyebrow" id="ph-eyebrow"></p>
+        <div id="programmheft-list"></div>
+      </div>
+
+      <div id="view-contacts" class="view hidden">
+        <h2 class="view-title">Kontakte</h2>
+        <p class="view-eyebrow" id="contacts-eyebrow"></p>
+        <div id="contacts-list" class="inv-table"></div>
+      </div>
+    </main>
+    </div>
+
+    <div id="rider-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="rider-modal-title">Technical Rider</div>
+          <button type="button" id="rider-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div id="rider-modal-list" class="modal-body"></div>
+        <div class="modal-footer">
+          <label class="rider-done-check">
+            <input type="checkbox" id="rider-done-checkbox" />
+            Rider ist fertig zusammengestellt
+          </label>
+          <div class="modal-footer-actions">
+            <button type="button" id="rider-book-btn" class="btn primary"><i class="ti ti-plus"></i> Buchen</button>
+            <button type="button" id="rider-csv-btn" class="btn"><i class="ti ti-download"></i> CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="contract-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="contract-modal-title">Vertrag erstellen</div>
+          <button type="button" id="contract-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div id="contract-contact-info" class="contract-contact-info"></div>
+          <div id="contract-fields"></div>
+          <div id="contract-result" class="contract-result hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <span id="contract-status" class="contract-status"></span>
+          <button type="button" id="contract-generate-btn" class="btn primary">Vertrag erstellen</button>
+        </div>
+      </div>
+    </div>
+    <div id="probenplan-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="probenplan-modal-title">Probenplan</div>
+          <button type="button" id="probenplan-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body" id="probenplan-modal-list"></div>
+        <div class="modal-footer">
+          <span id="probenplan-hint" class="contract-status"></span>
+          <button type="button" id="probenplan-csv-btn" class="btn"><i class="ti ti-download"></i> CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="termin-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="termin-modal-title">Termin</div>
+          <button type="button" id="termin-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body" id="termin-modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" id="termin-delete-btn" class="btn btn-danger"><i class="ti ti-trash"></i> Löschen</button>
+          <a id="termin-gcal-link" class="btn" href="#" target="_blank" rel="noopener">In Google Kalender öffnen</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="bio-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="bio-modal-title">Kurzbio</div>
+          <button type="button" id="bio-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div id="bio-modal-photo"></div>
+          <div id="bio-modal-text" class="bio-text"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js?v=40"></script>
+</body>
+</html>
