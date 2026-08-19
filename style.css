@@ -1,18 +1,29 @@
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f6f6f7;
-  --border: #e5e5e7;
-  --text: #1a1a1a;
-  --text-secondary: #68686c;
-  --text-muted: #9a9a9e;
-  --accent: #d6293e;
+  --surface-2: #f4f4f6;
+  --border: #e6e6e9;
+  --border-soft: #eeeef1;
+  --text: #16181d;
+  --text-secondary: #5c5f66;
+  --text-muted: #9296a0;
+  --accent: #d8434f;
   --accent-text: #ffffff;
-  --danger: #b0182b;
-  --danger-bg: #fbe7ea;
-  --warning: #b5650a;
-  --warning-bg: #fdf1e2;
-  --neutral-bg: #f7f7f8;
+  --danger: #a81f2c;
+  --danger-bg: #fbe4e6;
+  --warning: #a85c08;
+  --warning-bg: #fdf0e0;
+  --neutral-bg: #eceef1;
+
+  --chrome: #1c1e24;
+  --chrome-2: #24272e;
+  --chrome-border: #32363f;
+  --chrome-text: #b9bdc6;
+  --chrome-text-muted: #7c828d;
+
+  --shadow-card: 0 1px 2px rgba(20, 25, 35, .07), 0 3px 10px rgba(20, 25, 35, .05);
+  --shadow-raised: 0 1px 3px rgba(20, 25, 35, .10), 0 8px 24px rgba(20, 25, 35, .08);
+
   --radius: 10px;
   --sidebar-w: 236px;
   --font: "IBM Plex Sans", -apple-system, sans-serif;
@@ -47,8 +58,8 @@ body {
   align-items: center;
   gap: 12px;
   padding: 0 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--chrome-border);
+  background: var(--chrome);
   z-index: 30;
 }
 
@@ -65,7 +76,24 @@ body {
 
 .topbar-slim span {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--chrome-text-muted);
+}
+
+.topbar-slim .btn {
+  background: transparent;
+  border-color: var(--chrome-border);
+  color: var(--chrome-text);
+}
+
+.topbar-slim .btn:hover {
+  border-color: var(--chrome-text-muted);
+  background: var(--chrome-2);
+}
+
+.topbar-slim .festival-badge {
+  border-color: var(--chrome-border);
+  color: var(--chrome-text);
+  background: var(--chrome-2);
 }
 
 .app-body {
@@ -77,8 +105,8 @@ body {
 .sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: var(--chrome);
+  border-right: 1px solid var(--chrome-border);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -95,7 +123,7 @@ body {
   height: 1px;
   margin: 18px 4px 6px;
   background: repeating-linear-gradient(
-    to right, var(--border) 0 6px, transparent 6px 12px
+    to right, var(--chrome-border) 0 6px, transparent 6px 12px
   );
 }
 
@@ -118,23 +146,25 @@ body {
   border-radius: var(--radius);
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--chrome-text);
   text-align: left;
   cursor: pointer;
+  transition: background .12s ease, color .12s ease;
 }
 
 .nav-item i { font-size: 17px; width: 18px; text-align: center; }
 
-.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item:hover { background: var(--chrome-2); color: #fff; }
 
 .nav-item.active {
-  background: var(--danger-bg);
-  color: var(--danger);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(216, 67, 79, .35);
 }
 
 .sidebar-footer {
   padding: 14px 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--chrome-border);
 }
 
 .sidebar-footer .subtitle {
@@ -177,6 +207,16 @@ body {
   gap: 1rem;
   text-align: center;
   padding: 0 1.5rem;
+  background: var(--chrome);
+}
+
+#login-screen h1 { color: #fff; }
+#login-screen p { color: var(--chrome-text); }
+
+#login-screen .festival-badge {
+  border-color: var(--chrome-border);
+  background: var(--chrome-2);
+  color: var(--chrome-text);
 }
 
 #login-screen h1 {
@@ -261,7 +301,7 @@ main {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .dashboard-stat .num {
@@ -296,7 +336,7 @@ main {
   border-radius: var(--radius);
   padding: 16px 18px;
   margin-bottom: 1.5rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .dashboard-tasks-header {
@@ -431,7 +471,7 @@ main {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
   background: var(--surface);
 }
 
@@ -534,7 +574,7 @@ main {
   border: 1px solid var(--border);
   border-left: 5px solid var(--accent);
   border-radius: var(--radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -562,8 +602,9 @@ main {
 
 .event-card-title {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .event-completion {
@@ -656,14 +697,15 @@ main {
   align-items: center;
   gap: 12px;
   padding: 13px 18px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .checklist-row:last-child { border-bottom: none; }
 
 .checklist-label {
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 400;
+  color: var(--text-secondary);
   width: 140px;
   flex-shrink: 0;
   line-height: 1.25;
@@ -715,7 +757,7 @@ main {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(20,25,35,.16), 0 20px 60px rgba(20,25,35,.22);
 }
 
 .modal-header {
@@ -856,7 +898,7 @@ main {
   border-radius: var(--radius);
   margin-bottom: 8px;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .task input[type="checkbox"] {
@@ -972,8 +1014,11 @@ details summary {
 
 .task-wrap { margin-bottom: 8px; }
 .task-wrap .task { margin-bottom: 0; }
-.task-main { cursor: pointer; }
-.task-main:hover { border-color: var(--text-secondary); }
+.task-main { cursor: pointer; transition: box-shadow .14s ease, border-color .14s ease; }
+.task-main:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-raised);
+}
 
 .note-indicator {
   font-size: 12px;
@@ -1573,7 +1618,7 @@ details summary {
   padding: 14px 18px;
   margin-bottom: 1.25rem;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .next-event-card:hover { border-color: var(--text-secondary); }
