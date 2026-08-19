@@ -1827,7 +1827,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:R50");
+    const range = eventsSheetRange("A2:S50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -1851,6 +1851,7 @@ async function loadEvents() {
           interpreten: r[15] || "",
           komponisten: r[16] || "",
           programmtext: r[17] || "",
+          verantwortlich: r[18] || "",
         };
       })
       .filter((ev) => ev.project);
@@ -1913,19 +1914,8 @@ function renderEvents() {
           </div>`;
         }
 
-        if (def.key === "texte") {
-          return ""; // erscheint gebündelt in der Texte-Gruppe weiter unten
-        }
-
-        if (def.key === "bilder") {
-          const info = programmheftStatusFor(ev, "photoUrl");
-          const pillClass = info.status === "vorhanden" ? "vorhanden" : info.status === "in arbeit" ? "in-arbeit" : "fehlt";
-          const pillLabel = info.status === "vorhanden" ? "Erledigt" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
-          return `<div class="checklist-row">
-            <div class="checklist-label checklist-label-link" data-open-programmheft="1">Bilder</div>
-            <span class="status-pill ${pillClass} static">${pillLabel}</span>
-            <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${info.done}/${info.total}</span>
-          </div>`;
+        if (def.key === "texte" || def.key === "bilder") {
+          return ""; // erscheinen gebündelt unter "Programmheft" weiter unten
         }
 
         const isDone = item.status === "vorhanden";
@@ -1960,25 +1950,32 @@ function renderEvents() {
         <span class="checklist-link-open"></span>
       </div>`;
 
-      // Texte: Sammelzeile mit aufklappbaren Unterpunkten (Bios, Programmtext)
+      // Programmheft: Sammelzeile mit Bildern, Bios und Programmtext
       const hasText = !!(ev.programmtext && ev.programmtext.trim());
-      const texteComplete = texteInfo.status === "vorhanden" && hasText;
-      const texteInProgress = !texteComplete && (texteInfo.done > 0 || hasText);
-      const texteClass = texteComplete ? "vorhanden" : texteInProgress ? "in-arbeit" : "fehlt";
-      const texteLabel = texteComplete ? "Erledigt" : texteInProgress ? "In Arbeit" : "Fehlt";
+      const phComplete = bilderInfo.status === "vorhanden" && texteInfo.status === "vorhanden" && hasText;
+      const phInProgress = !phComplete && (bilderInfo.done > 0 || texteInfo.done > 0 || hasText);
+      const phClass = phComplete ? "vorhanden" : phInProgress ? "in-arbeit" : "fehlt";
+      const phLabel = phComplete ? "Erledigt" : phInProgress ? "In Arbeit" : "Fehlt";
+
+      const subRow = (label, info) => {
+        const cls = info.status === "vorhanden" ? "vorhanden" : info.status === "in arbeit" ? "in-arbeit" : "fehlt";
+        const lbl = info.status === "vorhanden" ? "Erledigt" : info.status === "in arbeit" ? "In Arbeit" : "Fehlt";
+        return `<div class="checklist-row">
+          <div class="checklist-label checklist-label-link" data-open-programmheft="1">${label}</div>
+          <span class="status-pill ${cls} static">${lbl}</span>
+          <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${info.done}/${info.total}</span>
+        </div>`;
+      };
 
       const texteRow = `<details class="checklist-subgroup">
         <summary class="checklist-row checklist-summary">
-          <div class="checklist-label">Texte</div>
-          <span class="status-pill ${texteClass} static">${texteLabel}</span>
+          <div class="checklist-label">Programmheft</div>
+          <span class="status-pill ${phClass} static">${phLabel}</span>
           <span class="checklist-link-open"></span>
         </summary>
         <div class="checklist-subrows">
-          <div class="checklist-row">
-            <div class="checklist-label checklist-label-link" data-open-programmheft="1">Bios</div>
-            <span class="status-pill ${texteInfo.status === "vorhanden" ? "vorhanden" : texteInfo.status === "in arbeit" ? "in-arbeit" : "fehlt"} static">${texteInfo.status === "vorhanden" ? "Erledigt" : texteInfo.status === "in arbeit" ? "In Arbeit" : "Fehlt"}</span>
-            <span class="checklist-link-open" style="color:var(--text-muted); font-size:11px;">${texteInfo.done}/${texteInfo.total}</span>
-          </div>
+          ${subRow("Bilder", bilderInfo)}
+          ${subRow("Bios", texteInfo)}
           <div class="checklist-row">
             <div class="checklist-label checklist-label-link" data-open-programmheft="1">Programmtext</div>
             <span class="status-pill ${hasText ? "vorhanden" : "fehlt"} static">${hasText ? "Erledigt" : "Fehlt"}</span>
@@ -1995,6 +1992,11 @@ function renderEvents() {
         <div class="event-date-row">
           <i class="ti ti-calendar-event"></i>
           <input type="date" class="event-date-input" value="${escapeHtml(ev.date)}" data-row="${ev.rowIndex}" />
+          <i class="ti ti-user-check event-resp-icon"></i>
+          <select class="event-resp-select" data-row="${ev.rowIndex}">
+            <option value="">Verantwortlich…</option>
+            ${peopleList.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name === ev.verantwortlich ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
+          </select>
         </div>
         <div class="event-people">
           <div class="event-people-field">
@@ -2086,12 +2088,35 @@ function renderEvents() {
     });
   });
 
+  container.querySelectorAll(".event-resp-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      updateEventVerantwortlich(parseInt(sel.dataset.row, 10), sel.value);
+    });
+  });
+
   container.querySelectorAll(".event-date-input").forEach((input) => {
     input.addEventListener("change", () => {
       const rowIndex = parseInt(input.dataset.row, 10);
       updateEventDate(rowIndex, input.value);
     });
   });
+}
+
+async function updateEventVerantwortlich(rowIndex, name) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`S${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[name]] }),
+    });
+    ev.verantwortlich = name;
+    setStatus(name ? `Verantwortlich: ${name}` : "Verantwortliche Person entfernt.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 async function updateEventDate(rowIndex, date) {
