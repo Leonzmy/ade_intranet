@@ -1901,3 +1901,42 @@ details summary {
 }
 
 .task-delete:hover { color: var(--danger); background: var(--danger-bg); }
+
+/* ---------- Signatur ---------- */
+
+.sign-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.sign-block.signed { color: var(--success); }
+.sign-block .sign-meta { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); }
+.sign-block a { color: var(--accent); font-weight: 500; }
+
+.contract-person-status.created { background: var(--warning-bg); color: var(--warning); }
+
+.contacts-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.contacts-filters select {
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.contact-row {
+  grid-template-columns: 1.2fr 0.9fr 0.9fr 1.2fr 1.2fr 0.8fr 36px;
+}
