@@ -13,19 +13,19 @@
   --danger-bg: #fbe4e6;
   --warning: #a85c08;
   --warning-bg: #fdf0e0;
-  --neutral-bg: #eceef1;
+  --neutral-bg: #f3f4f6;
 
-  --chrome: #1c1e24;
-  --chrome-2: #24272e;
-  --chrome-border: #32363f;
-  --chrome-text: #b9bdc6;
-  --chrome-text-muted: #7c828d;
+  --chrome: #2b2e35;
+  --chrome-2: #363a43;
+  --chrome-border: #3e424b;
+  --chrome-text: #c7cad1;
+  --chrome-text-muted: #8b909a;
 
   --shadow-card: 0 1px 2px rgba(20, 25, 35, .07), 0 3px 10px rgba(20, 25, 35, .05);
   --shadow-raised: 0 1px 3px rgba(20, 25, 35, .10), 0 8px 24px rgba(20, 25, 35, .08);
 
   --radius: 10px;
-  --sidebar-w: 236px;
+  --sidebar-w: 210px;
   --font: "IBM Plex Sans", -apple-system, sans-serif;
   --font-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
@@ -52,7 +52,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 52px;
+  height: 46px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -92,14 +92,18 @@ body {
 
 .topbar-slim .festival-badge {
   border-color: var(--chrome-border);
+  border-left-color: var(--accent);
   color: var(--chrome-text);
   background: var(--chrome-2);
 }
 
+.topbar-slim .badge-urgent { color: #ff5f6d; }
+.topbar-slim .badge-divider { color: var(--chrome-text-muted); }
+
 .app-body {
   display: flex;
   flex: 1;
-  padding-top: 52px;
+  padding-top: 46px;
 }
 
 .sidebar {
@@ -110,7 +114,7 @@ body {
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 52px;
+  top: 46px;
   left: 0;
   bottom: 0;
   overflow-y: auto;
@@ -140,9 +144,9 @@ body {
   align-items: center;
   gap: 10px;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  padding: 9px 12px;
+  padding: 7px 11px;
   border-radius: var(--radius);
   border: none;
   background: transparent;
@@ -152,14 +156,14 @@ body {
   transition: background .12s ease, color .12s ease;
 }
 
-.nav-item i { font-size: 17px; width: 18px; text-align: center; }
+.nav-item i { font-size: 16px; width: 17px; text-align: center; }
 
 .nav-item:hover { background: var(--chrome-2); color: #fff; }
 
 .nav-item.active {
-  background: var(--accent);
+  background: var(--chrome-2);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(216, 67, 79, .35);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .sidebar-footer {
@@ -207,16 +211,6 @@ body {
   gap: 1rem;
   text-align: center;
   padding: 0 1.5rem;
-  background: var(--chrome);
-}
-
-#login-screen h1 { color: #fff; }
-#login-screen p { color: var(--chrome-text); }
-
-#login-screen .festival-badge {
-  border-color: var(--chrome-border);
-  background: var(--chrome-2);
-  color: var(--chrome-text);
 }
 
 #login-screen h1 {
