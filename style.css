@@ -1658,3 +1658,81 @@ details summary {
 .templates-details[open] .templates-summary::after { transform: rotate(90deg); }
 
 .templates-details .inv-table { margin-top: 10px; margin-bottom: 0; }
+
+/* ---------- Programm (Stück-Reihenfolge) ---------- */
+
+.programm-block { margin-bottom: 20px; }
+
+.piece-list { margin-bottom: 10px; }
+
+.piece-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  background: var(--surface);
+}
+
+.piece-row.dragging { opacity: 0.4; }
+
+.piece-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.piece-handle:active { cursor: grabbing; }
+
+.piece-input {
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  min-width: 0;
+}
+
+.piece-input:first-of-type { flex: 1; }
+.piece-input:last-of-type { flex: 1.6; }
+
+.piece-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.piece-status.idee { background: var(--surface-2); color: var(--text-muted); }
+.piece-status.zustimmung { background: var(--warning-bg); color: var(--warning); border-color: transparent; }
+.piece-status.bestaetigt { background: #e6f4ea; color: #1a7a3c; border-color: transparent; }
+
+.piece-delete {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.piece-delete:hover { color: var(--danger); }
+
+.programm-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
