@@ -1490,3 +1490,28 @@ details summary {
 }
 
 .ph-subsection-spaced { margin-top: 20px; }
+
+.people-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 6px;
+  width: fit-content;
+}
+
+.people-toggle-btn {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.people-toggle-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
