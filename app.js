@@ -1253,7 +1253,8 @@ function riderStatusFor(ev) {
   const stored = ev.items.rider.status;
   if (stored === "vorhanden") return "vorhanden";
   const hasBookings = bookings.some((b) => b.project === ev.project);
-  return hasBookings ? "in arbeit" : "fehlt";
+  const hasNeeds = tasks.some((t) => t.title.startsWith(NEED_PREFIX) && t.project === ev.project);
+  return hasBookings || hasNeeds ? "in arbeit" : "fehlt";
 }
 
 function contractsStatusFor(ev) {
@@ -1330,8 +1331,10 @@ function openRiderModal(rowIndex) {
   document.getElementById("rider-modal-title").textContent = `Technical Rider — ${ev.project}`;
 
   const projectBookings = bookings.filter((b) => b.project === ev.project);
+  const externalNeeds = externalNeedsFor(ev.project);
   const listEl = document.getElementById("rider-modal-list");
-  listEl.innerHTML = projectBookings.length
+
+  const bookingsHtml = projectBookings.length
     ? projectBookings
         .map((b) => {
           const dateLabel = b.date ? new Date(b.date + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : "—";
@@ -1344,12 +1347,37 @@ function openRiderModal(rowIndex) {
         .join("")
     : `<div class="empty">Noch nichts aus dem Inventar gebucht.</div>`;
 
+  const needsHtml = externalNeeds.length
+    ? externalNeeds
+        .map((t) => {
+          const urgency = urgencyOf(t.due);
+          const dueLabel = t.status === "erledigt" ? "erledigt" : formatDue(t.due, urgency);
+          return `<div class="rider-list-row">
+            <span>${escapeHtml(t.title.replace(NEED_PREFIX, ""))}</span>
+            <span class="qty">${escapeHtml(t.assigneeName || "niemand")} · ${dueLabel}</span>
+            <span style="width:20px"></span>
+          </div>`;
+        })
+        .join("")
+    : "";
+
+  listEl.innerHTML = `
+    <div class="rider-section-title">Aus dem Inventar (schwere reiter)</div>
+    ${bookingsHtml}
+    ${needsHtml ? `<div class="rider-section-title rider-section-spaced">Externes Equipment</div>${needsHtml}` : ""}
+  `;
+
   listEl.querySelectorAll(".rider-delete-booking").forEach((btn) => {
     btn.addEventListener("click", () => deleteBooking(parseInt(btn.dataset.bookingRow, 10)));
   });
 
   document.getElementById("rider-done-checkbox").checked = ev.items.rider.status === "vorhanden";
   document.getElementById("rider-modal").classList.remove("hidden");
+}
+
+// Technik-Bedarfe (als Aufgaben angelegt) für ein Event
+function externalNeedsFor(project) {
+  return tasks.filter((t) => t.title.startsWith(NEED_PREFIX) && t.project === project);
 }
 
 function closeRiderModal() {
@@ -1408,13 +1436,53 @@ function downloadRiderCsv(rowIndex) {
   if (!targetRow) return;
   const ev = eventsData.find((e) => e.rowIndex === targetRow);
   if (!ev) return;
-  const projectBookings = bookings.filter((b) => b.project === ev.project);
 
-  const csvEscape = (v) => `"${String(v).replace(/"/g, '""')}"`;
-  const lines = [["Equipment", "Anzahl", "Datum", "Notiz"].map(csvEscape).join(";")];
-  projectBookings.forEach((b) => {
-    lines.push([b.equipment, b.qty, b.date, b.note].map(csvEscape).join(";"));
-  });
+  const projectBookings = bookings.filter((b) => b.project === ev.project);
+  const externalNeeds = externalNeedsFor(ev.project);
+
+  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const line = (cells) => cells.map(csvEscape).join(";");
+  const dateLabel = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("de-DE") : "");
+
+  const lines = [];
+
+  // Kopfbereich
+  lines.push(line(["TECHNICAL RIDER"]));
+  lines.push(line([]));
+  lines.push(line(["Event", ev.project]));
+  lines.push(line(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]));
+  lines.push(line(["Datum", dateLabel(ev.date)]));
+  lines.push(line(["Erstellt am", new Date().toLocaleDateString("de-DE")]));
+  lines.push(line([]));
+
+  // Inventar
+  lines.push(line(["AUS DEM INVENTAR (schwere reiter)"]));
+  lines.push(line(["Equipment", "Anzahl", "Datum", "Notiz"]));
+  if (projectBookings.length) {
+    projectBookings.forEach((b) => {
+      lines.push(line([b.equipment, b.qty, dateLabel(b.date), b.note]));
+    });
+  } else {
+    lines.push(line(["— nichts gebucht —"]));
+  }
+
+  // Externes Equipment
+  lines.push(line([]));
+  lines.push(line(["EXTERNES EQUIPMENT"]));
+  lines.push(line(["Bedarf", "Verantwortlich", "Deadline", "Status"]));
+  if (externalNeeds.length) {
+    externalNeeds.forEach((t) => {
+      lines.push(line([
+        t.title.replace(NEED_PREFIX, ""),
+        t.assigneeName || "",
+        dateLabel(t.due),
+        t.status === "erledigt" ? "erledigt" : "offen",
+      ]));
+    });
+  } else {
+    lines.push(line(["— kein externer Bedarf —"]));
+  }
+
   const csvContent = "\uFEFF" + lines.join("\r\n");
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
