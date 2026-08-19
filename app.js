@@ -2400,7 +2400,7 @@ function programmheftSheetRange(a1) {
 
 async function loadProgrammheft() {
   try {
-    const phUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmheftSheetRange("A2:G500")}`;
+    const phUrl = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${programmheftSheetRange("A2:H500")}`;
     const phData = await apiFetch(phUrl);
 
     programmheftData = (phData.values || [])
@@ -2411,8 +2411,9 @@ async function loadProgrammheft() {
         events: r[2] || "",
         bio: r[3] || "",
         photoUrl: r[4] || "",
-        updatedAt: r[5] || "",
-        token: r[6] || "",
+        photoCredits: r[5] || "",
+        updatedAt: r[6] || "",
+        token: r[7] || "",
       }))
       .filter((p) => p.name);
   } catch (e) {
@@ -2450,14 +2451,14 @@ async function syncProgrammheft() {
         const resp = await apiFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", token]] }),
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", "", token]] }),
         });
         const updatedRange = resp?.updates?.updatedRange || "";
         const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
         const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
         programmheftData.push({
           rowIndex: newRowIndex, name, role: roleStr, events: eventsStr,
-          bio: "", photoUrl: "", updatedAt: "", token,
+          bio: "", photoUrl: "", photoCredits: "", updatedAt: "", token,
         });
       } catch (e) {
         // einzelne Fehlschläge nicht den ganzen Sync abbrechen lassen
@@ -2572,6 +2573,7 @@ function openBioModal(rowIndex) {
   const photoEl = document.getElementById("bio-modal-photo");
   photoEl.innerHTML = entry.photoUrl
     ? `<a href="${escapeHtml(entry.photoUrl)}" target="_blank" rel="noopener">Foto in Drive öffnen</a>`
+      + (entry.photoCredits ? `<div class="bio-credits">Bildcredits: ${escapeHtml(entry.photoCredits)}</div>` : "")
     : "";
   document.getElementById("bio-modal-text").textContent = entry.bio || "Keine Bio hinterlegt.";
   document.getElementById("bio-modal").classList.remove("hidden");
@@ -2587,7 +2589,7 @@ async function copyProgrammheftLink(rowIndex) {
 
   if (!entry.token) {
     const newToken = genToken();
-    const range = programmheftSheetRange(`G${rowIndex}`);
+    const range = programmheftSheetRange(`H${rowIndex}`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
     try {
       await apiFetch(url, {
