@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vertrag unterschreiben</title>
+  <style>
+    :root {
+      --bg: #eef0f6;
+      --surface: #ffffff;
+      --border: #dfe1ea;
+      --text: #14161c;
+      --text-secondary: #575b68;
+      --text-muted: #8b90a0;
+      --accent: #e5233a;
+      --accent-deep: #c01329;
+      --accent-text: #ffffff;
+      --radius: 10px;
+      --font: "IBM Plex Sans", -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 28px 26px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 2px 4px rgba(23,27,40,.12), 0 12px 32px rgba(23,27,40,.12);
+    }
+    h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.02em; }
+    p { color: var(--text-secondary); font-size: 14px; margin: 0 0 18px; line-height: 1.5; }
+    .meta {
+      background: #f2f3f7;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    .meta div { padding: 3px 0; }
+    .meta strong { font-weight: 600; }
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 18px;
+    }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; margin-top: 16px; }
+    input[type="text"], input[type="email"] {
+      width: 100%;
+      font-family: var(--font);
+      font-size: 15px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: #f7f8fb;
+    }
+    .sig-wrap {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      background: #fdfdfe;
+      position: relative;
+      touch-action: none;
+    }
+    canvas { display: block; width: 100%; height: 180px; border-radius: var(--radius); cursor: crosshair; }
+    .sig-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .sig-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+    .sig-clear {
+      font-family: var(--font);
+      font-size: 12px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+    .sig-clear:hover { color: var(--accent); }
+    button.primary {
+      margin-top: 20px;
+      width: 100%;
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 500;
+      padding: 13px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--accent);
+      color: var(--accent-text);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(197,20,45,.28), 0 3px 10px rgba(197,20,45,.20);
+    }
+    button.primary:hover { background: var(--accent-deep); }
+    button.primary:disabled { opacity: .5; cursor: default; box-shadow: none; }
+    .legal { font-size: 11px; color: var(--text-muted); margin-top: 14px; line-height: 1.5; }
+    .status { margin-top: 14px; font-size: 13px; }
+    .status.error { color: var(--accent); }
+    .status.success { color: #12875a; font-weight: 500; }
+    .hidden { display: none; }
+    .done-box { text-align: center; padding: 10px 0; }
+    .done-box .check { font-size: 40px; color: #12875a; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="invalid-state" class="hidden">
+      <h1>Link ungültig</h1>
+      <p>Dieser Link ist nicht mehr gültig oder wurde falsch kopiert. Bitte wende dich an die Person, die ihn dir geschickt hat.</p>
+    </div>
+
+    <div id="already-signed" class="hidden">
+      <div class="done-box">
+        <div class="check">✓</div>
+        <h1>Bereits unterschrieben</h1>
+        <p>Dieser Vertrag wurde schon signiert.</p>
+        <a id="signed-doc-link" class="doc-link" href="#" target="_blank" rel="noopener">Signierten Vertrag ansehen</a>
+      </div>
+    </div>
+
+    <div id="form-state" class="hidden">
+      <h1>Vertrag unterschreiben</h1>
+      <p>Bitte lies den Vertrag durch und unterschreibe unten mit Maus oder Finger.</p>
+
+      <div class="meta" id="meta"></div>
+
+      <a id="doc-link" class="doc-link" href="#" target="_blank" rel="noopener">📄 Vertrag als PDF öffnen</a>
+
+      <form id="sign-form">
+        <label for="signerName">Vollständiger Name</label>
+        <input type="text" id="signerName" required />
+
+        <label for="signerEmail">E-Mail</label>
+        <input type="email" id="signerEmail" required />
+
+        <label>Unterschrift</label>
+        <div class="sig-wrap">
+          <canvas id="sig-canvas"></canvas>
+          <div class="sig-placeholder" id="sig-placeholder">Hier unterschreiben</div>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="sig-clear" id="sig-clear">Löschen und neu</button>
+        </div>
+
+        <button type="submit" class="primary" id="submit-btn">Rechtsverbindlich unterschreiben</button>
+      </form>
+
+      <div class="legal">
+        Mit dem Absenden gibst du eine einfache elektronische Signatur gemäß eIDAS-Verordnung ab.
+        Zeitpunkt, Name, E-Mail und IP-Adresse werden zusammen mit der Unterschrift im Dokument protokolliert.
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="loading-state"><p>Lädt…</p></div>
+  </div>
+
+  <script>
+    // Dieselbe Web-App-URL wie in den anderen Formularen
+    const WEBAPP_URL = "TRAGE_HIER_DEINE_WEB_APP_URL_EIN";
+
+    const params = new URLSearchParams(location.search);
+    const row = params.get("row");
+    const token = params.get("token");
+
+    const loadingEl = document.getElementById("loading-state");
+    const invalidEl = document.getElementById("invalid-state");
+    const signedEl = document.getElementById("already-signed");
+    const formEl = document.getElementById("form-state");
+    const statusEl = document.getElementById("status");
+
+    let signerIp = "";
+
+    function showInvalid() {
+      loadingEl.classList.add("hidden");
+      invalidEl.classList.remove("hidden");
+    }
+
+    // ---- Zeichenfeld ----
+    const canvas = document.getElementById("sig-canvas");
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+    let hasSignature = false;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      // Bestehende Zeichnung sichern, damit sie beim Skalieren nicht verlorengeht
+      const backup = hasSignature ? canvas.toDataURL() : null;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#14161c";
+      if (backup) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        img.src = backup;
+      }
+    }
+
+    function pos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+    }
+
+    function start(e) {
+      e.preventDefault();
+      drawing = true;
+      const { x, y } = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      if (!hasSignature) {
+        hasSignature = true;
+        document.getElementById("sig-placeholder").style.display = "none";
+      }
+    }
+
+    function move(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      const { x, y } = pos(e);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function end() { drawing = false; }
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", end);
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end);
+
+    document.getElementById("sig-clear").addEventListener("click", () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasSignature = false;
+      document.getElementById("sig-placeholder").style.display = "";
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    // ---- Laden ----
+    async function init() {
+      if (!row || !token || WEBAPP_URL.startsWith("TRAGE_HIER")) {
+        showInvalid();
+        return;
+      }
+
+      // IP für das Protokoll ermitteln (rein informativ, keine Pflicht)
+      try {
+        const ipRes = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipRes.json();
+        signerIp = ipData.ip || "";
+      } catch (err) {
+        signerIp = "";
+      }
+
+      try {
+        const res = await fetch(`${WEBAPP_URL}?type=signatur&row=${encodeURIComponent(row)}&token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!data.valid) { showInvalid(); return; }
+
+        if (data.signStatus === "signiert") {
+          loadingEl.classList.add("hidden");
+          signedEl.classList.remove("hidden");
+          document.getElementById("signed-doc-link").href = data.signedPdfUrl || "#";
+          return;
+        }
+
+        document.getElementById("meta").innerHTML =
+          `<div><strong>${data.name}</strong></div>` +
+          `<div>Event: ${data.event}</div>` +
+          `<div>Rolle: ${data.role}</div>`;
+        document.getElementById("doc-link").href = data.pdfUrl || data.docUrl || "#";
+        document.getElementById("signerName").value = data.name || "";
+
+        loadingEl.classList.add("hidden");
+        formEl.classList.remove("hidden");
+        resizeCanvas();
+      } catch (err) {
+        showInvalid();
+      }
+    }
+    init();
+
+    // ---- Absenden ----
+    document.getElementById("sign-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusEl.textContent = "";
+      statusEl.className = "status";
+
+      if (!hasSignature) {
+        statusEl.textContent = "Bitte zuerst unterschreiben.";
+        statusEl.className = "status error";
+        return;
+      }
+
+      const btn = document.getElementById("submit-btn");
+      btn.disabled = true;
+      statusEl.textContent = "Wird gespeichert…";
+
+      try {
+        const res = await fetch(WEBAPP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "signContract",
+            row,
+            token,
+            signatureData: canvas.toDataURL("image/png"),
+            signerName: document.getElementById("signerName").value.trim(),
+            signerEmail: document.getElementById("signerEmail").value.trim(),
+            signerIp,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          formEl.classList.add("hidden");
+          signedEl.classList.remove("hidden");
+          document.getElementById("signed-doc-link").href = data.signedPdfUrl || "#";
+        } else {
+          statusEl.textContent = data.error || "Fehler beim Speichern.";
+          statusEl.className = "status error";
+          btn.disabled = false;
+        }
+      } catch (err) {
+        statusEl.textContent = "Fehler beim Speichern. Bitte später erneut versuchen.";
+        statusEl.className = "status error";
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
