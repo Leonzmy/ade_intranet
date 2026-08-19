@@ -119,6 +119,8 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   bindClick(els.contractModalClose, closeContractModal);
   bindClick(els.contractGenerateBtn, handleGenerateContract);
+  bindClick(document.getElementById("dash-filter-mine"), () => setDashboardFilter(false));
+  bindClick(document.getElementById("dash-filter-all"), () => setDashboardFilter(true));
   bindClick(document.getElementById("bio-modal-close"), closeBioModal);
   bindClick(document.getElementById("termin-modal-close"), closeTerminModal);
   bindClick(document.getElementById("probenplan-modal-close"), closeProbenplanModal);
@@ -754,9 +756,13 @@ function switchView(view) {
   if (view === "programmheft") renderProgrammheft();
 }
 
+let dashboardShowAll = false;
+
 function renderDashboard() {
-  const mine = tasks.filter((t) => t.assigneeEmail === (userEmail || "").toLowerCase());
-  const open = mine.filter((t) => t.status !== "erledigt");
+  const relevant = dashboardShowAll
+    ? tasks
+    : tasks.filter((t) => t.assigneeEmail === (userEmail || "").toLowerCase());
+  const open = relevant.filter((t) => t.status !== "erledigt");
   const overdue = open.filter((t) => urgencyOf(t.due) === "overdue").length;
   const week = open.filter((t) => urgencyOf(t.due) === "week").length;
   const later = open.filter((t) => urgencyOf(t.due) === "later").length;
@@ -785,7 +791,7 @@ function renderDashboard() {
           return `<div class="dashboard-task-row" data-row="${t.rowIndex}">
             <div>
               <div class="title">${escapeHtml(t.title)}</div>
-              <div class="project">${escapeHtml(t.project)}</div>
+              <div class="project">${escapeHtml(t.project)}${dashboardShowAll && t.assigneeName ? " · " + escapeHtml(t.assigneeName) : ""}</div>
             </div>
             <div class="task-due ${urgency}">${dueLabel}</div>
           </div>`;
@@ -797,8 +803,20 @@ function renderDashboard() {
     row.addEventListener("click", () => switchView("tasks"));
   });
 
+  const heading = document.getElementById("dashboard-tasks-heading");
+  if (heading) heading.textContent = dashboardShowAll ? "Aktuelle Aufgaben (Team)" : "Meine aktuellen Aufgaben";
+
   renderNextEvent();
   renderDashboardCalendar();
+}
+
+function setDashboardFilter(showAll) {
+  dashboardShowAll = showAll;
+  const mineBtn = document.getElementById("dash-filter-mine");
+  const allBtn = document.getElementById("dash-filter-all");
+  if (mineBtn) mineBtn.classList.toggle("active", !showAll);
+  if (allBtn) allBtn.classList.toggle("active", showAll);
+  renderDashboard();
 }
 
 async function renderDashboardCalendar() {
@@ -864,6 +882,13 @@ function renderTasks() {
       if (e.target.closest(".task-check")) return;
       const rowIndex = parseInt(row.dataset.row, 10);
       toggleNotes(rowIndex);
+    });
+  });
+
+  els.sections.querySelectorAll(".task-delete").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteTask(parseInt(btn.dataset.row, 10));
     });
   });
 
@@ -935,6 +960,9 @@ function taskHtml(t) {
         <input type="text" placeholder="Notiz hinzufügen…" />
         <button type="submit" class="btn primary">Senden</button>
       </form>
+      <div class="task-actions">
+        <button type="button" class="task-delete" data-row="${t.rowIndex}"><i class="ti ti-trash"></i> Aufgabe löschen</button>
+      </div>
     </div>
   </div>`;
 }
@@ -942,6 +970,31 @@ function taskHtml(t) {
 function toggleNotes(rowIndex) {
   expandedRow = expandedRow === rowIndex ? null : rowIndex;
   renderTasks();
+}
+
+async function deleteTask(rowIndex) {
+  const t = tasks.find((x) => x.rowIndex === rowIndex);
+  if (!t) return;
+
+  if (!window.confirm(`Aufgabe "${t.title}" wirklich löschen? Das lässt sich nicht rückgängig machen.`)) return;
+
+  const range = sheetRange(`A${rowIndex}:J${rowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [["", "", "", "", "", "", "", "", "", ""]] }),
+    });
+    tasks = tasks.filter((x) => x.rowIndex !== rowIndex);
+    expandedRow = null;
+    setStatus("Aufgabe gelöscht.");
+    renderTasks();
+    // Deadline im Kalender mitentfernen
+    await syncDeadlinesToCalendar();
+  } catch (e) {
+    setStatus("Aufgabe konnte nicht gelöscht werden: " + e.message, true);
+  }
 }
 
 async function updateTaskStatus(rowIndex, done) {
