@@ -40,7 +40,8 @@ const CONFIG = {
   BIO_MAX_CHARS: 800,
   // URL, unter der programmheft-formular.html erreichbar ist
   PROGRAMMHEFT_FORM_URL: "https://leonzmy.github.io/ade_intranet/programmheft-formular.html",
-
+ // Blattnamen für Verträge
+  CONTRACT_TEMPLATES_SHEET_NAME: "Vertragsvorlagen",
   CONTRACT_DETAILS_SHEET_NAME: "Vertragsdetails",
 ADMIN_KEY: "ade19-intern-9f3k2m",
   
