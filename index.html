@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="stylesheet" href="style.css?v=19" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -52,6 +52,8 @@
       <div id="view-dashboard" class="view">
         <h2 class="view-title">Dashboard</h2>
         <div id="dashboard-stats" class="dashboard-stats"></div>
+
+        <div id="dashboard-next-event"></div>
 
         <div class="dashboard-tasks-card" id="dashboard-tasks-card">
           <div class="dashboard-tasks-header">
@@ -120,15 +122,35 @@
         <form id="new-event-form" class="new-task-form hidden">
           <div class="row">
             <input type="text" name="title" placeholder="Titel des Termins" required />
+            <select name="category" id="event-category-select">
+              <option value="Organisationstreffen">Organisationstreffen</option>
+              <option value="Probe">Probe</option>
+              <option value="Konzert">Konzert</option>
+              <option value="Konzertbesuch">Konzertbesuch</option>
+            </select>
+          </div>
+          <div class="row">
             <input type="date" name="date" required />
             <input type="time" name="time" placeholder="Uhrzeit (optional)" />
+            <input type="number" name="duration" placeholder="Dauer (Min.)" min="15" step="15" value="60" />
           </div>
+          <div class="row">
+            <input type="text" name="location" placeholder="Ort (optional)" />
+            <input type="url" name="zoomLink" placeholder="Zoom-Link (optional)" />
+          </div>
+          <div class="row">
+            <select name="attendees" id="event-attendees-select" multiple size="4"></select>
+          </div>
+          <textarea name="description" placeholder="Notizen zum Termin (optional)" rows="2"></textarea>
           <button type="submit" class="btn primary">Termin speichern</button>
         </form>
 
         <div class="cal-legend">
           <span class="legend-item"><span class="legend-dot legend-deadline"></span>Deadline</span>
-          <span class="legend-item"><span class="legend-dot legend-event"></span>Termin</span>
+          <span class="legend-item"><span class="legend-dot legend-orga"></span>Organisationstreffen</span>
+          <span class="legend-item"><span class="legend-dot legend-probe"></span>Probe</span>
+          <span class="legend-item"><span class="legend-dot legend-konzert"></span>Konzert</span>
+          <span class="legend-item"><span class="legend-dot legend-besuch"></span>Konzertbesuch</span>
         </div>
 
         <div id="calendar-grid"></div>
@@ -229,6 +251,20 @@
         </div>
       </div>
     </div>
+    <div id="termin-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="termin-modal-title">Termin</div>
+          <button type="button" id="termin-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body" id="termin-modal-body"></div>
+        <div class="modal-footer">
+          <span></span>
+          <a id="termin-gcal-link" class="btn" href="#" target="_blank" rel="noopener">In Google Kalender öffnen</a>
+        </div>
+      </div>
+    </div>
+
     <div id="bio-modal" class="modal-overlay hidden">
       <div class="modal-box">
         <div class="modal-header">
@@ -244,6 +280,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
