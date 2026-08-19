@@ -42,6 +42,7 @@ const CONFIG = {
   PROGRAMMHEFT_FORM_URL: "https://leonzmy.github.io/ade_intranet/programmheft-formular.html",
  // Blattnamen für Verträge
   CONTRACT_TEMPLATES_SHEET_NAME: "Vertragsvorlagen",
+  SIGN_FORM_URL: "https://leonzmy.github.io/ade_intranet/vertrag-signieren.html",
   CONTRACT_DETAILS_SHEET_NAME: "Vertragsdetails",
 ADMIN_KEY: "ade19-intern-9f3k2m",
   
