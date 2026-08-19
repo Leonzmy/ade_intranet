@@ -236,6 +236,7 @@ async function enterApp() {
   await syncDeadlinesToCalendar();
   await loadCalendar();
   renderDashboard();
+  renderEyebrows();
   setStatus("");
 }
 
@@ -753,6 +754,7 @@ function switchView(view) {
   if (view === "inventory") renderInventory();
   if (view === "contacts") renderContacts();
   if (view === "contracts") { renderTemplates(); renderContractsBrowser(); }
+  renderEyebrows();
   if (view === "programmheft") renderProgrammheft();
 }
 
@@ -2263,13 +2265,16 @@ async function loadContractTemplates() {
 
 async function loadContractDetails() {
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contractDetailsSheetRange("A2:J300")}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contractDetailsSheetRange("A2:P300")}`;
     const data = await apiFetch(url);
     contractDetails = (data.values || [])
-      .map((r) => ({
+      .map((r, i) => ({
+        rowIndex: i + 2,
         name: r[0], event: r[1], role: r[2],
         instrument: r[3] || "", laenge: r[4] || "", honorar: r[5] || "", gesamtsumme: r[6] || "",
         docUrl: r[7] || "", pdfUrl: r[8] || "", createdAt: r[9] || "",
+        signStatus: r[10] || "offen", signedAt: r[11] || "", signedBy: r[12] || "",
+        signedIp: r[13] || "", signedPdfUrl: r[14] || "", signToken: r[15] || "",
       }))
       .filter((c) => c.name);
   } catch (e) {
@@ -2320,8 +2325,10 @@ function renderContractsBrowser() {
             const existing = contractDetails.find(
               (c) => c.name === name && c.event === event && c.role === roleDef.category
             );
-            const statusLabel = existing ? "Vertrag erstellt" : "Kein Vertrag";
-            const statusClass = existing ? "done" : "pending";
+            const statusLabel = !existing ? "Kein Vertrag"
+              : existing.signStatus === "signiert" ? "Unterschrieben" : "Vertrag erstellt";
+            const statusClass = !existing ? "pending"
+              : existing.signStatus === "signiert" ? "done" : "created";
             return `<div class="contract-person-row" data-name="${escapeHtml(name)}" data-event="${escapeHtml(event)}" data-category="${escapeHtml(roleDef.category)}" data-rolekey="${roleDef.key}">
               <span class="contract-person-name">${escapeHtml(name)}</span>
               <span class="contract-person-status ${statusClass}">${statusLabel}</span>
@@ -2389,7 +2396,26 @@ function openContractModal(name, event, category, roleKey) {
   resultEl.innerHTML = "";
   if (existing && existing.docUrl) {
     resultEl.classList.remove("hidden");
-    resultEl.innerHTML = `Zuletzt erstellt: <a href="${escapeHtml(existing.docUrl)}" target="_blank" rel="noopener">Google Doc öffnen</a><a href="${escapeHtml(existing.pdfUrl)}" target="_blank" rel="noopener">Als PDF herunterladen</a>`;
+    const signBlock = existing.signStatus === "signiert"
+      ? `<div class="sign-block signed">
+           <div><i class="ti ti-writing-sign"></i> Unterschrieben von ${escapeHtml(existing.signedBy || existing.name)}</div>
+           <div class="sign-meta">${existing.signedAt ? new Date(existing.signedAt).toLocaleString("de-DE") : ""}</div>
+           <a href="${escapeHtml(existing.signedPdfUrl)}" target="_blank" rel="noopener">Signierten Vertrag öffnen</a>
+         </div>`
+      : `<div class="sign-block">
+           <div><i class="ti ti-writing-sign"></i> Noch nicht unterschrieben</div>
+           <button type="button" class="btn" id="copy-sign-link" data-row="${existing.rowIndex}">Signatur-Link kopieren</button>
+         </div>`;
+
+    resultEl.innerHTML =
+      `Zuletzt erstellt: <a href="${escapeHtml(existing.docUrl)}" target="_blank" rel="noopener">Google Doc öffnen</a>`
+      + `<a href="${escapeHtml(existing.pdfUrl)}" target="_blank" rel="noopener">Als PDF herunterladen</a>`
+      + signBlock;
+
+    const copyBtn = document.getElementById("copy-sign-link");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => copySignLink(parseInt(copyBtn.dataset.row, 10)));
+    }
   }
 
   document.getElementById("contract-status").textContent = "";
@@ -3339,4 +3365,54 @@ function downloadProgrammCsv(project) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// Kennzahl-Zeilen unter den Überschriften (Plakat-Anmutung)
+function renderEyebrows() {
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const fest = CONFIG.DEFAULT_FESTIVAL || "";
+
+  set("events-eyebrow", `${eventsData.length} Produktionen — ${fest}`);
+
+  const contractCount = eventsData.reduce((sum, ev) => sum + contractsStatusFor(ev).total, 0);
+  const contractsDone = eventsData.reduce((sum, ev) => sum + contractsStatusFor(ev).done, 0);
+  set("contracts-eyebrow", `${contractsDone} von ${contractCount} Verträgen erstellt`);
+
+  const bios = programmheftData.filter((p) => p.bio).length;
+  set("ph-eyebrow", `${bios} von ${programmheftData.length} Bios eingegangen`);
+
+  set("contacts-eyebrow", `${contactsData.length} Personen und Ensembles`);
+}
+
+// Signatur-Link für einen Vertrag erzeugen und kopieren
+async function copySignLink(rowIndex) {
+  const c = contractDetails.find((x) => x.rowIndex === rowIndex);
+  if (!c) return;
+
+  if (!c.signToken) {
+    const newToken = genToken();
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contractDetailsSheetRange(`P${rowIndex}`)}?valueInputOption=RAW`;
+    try {
+      await apiFetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ values: [[newToken]] }),
+      });
+      c.signToken = newToken;
+    } catch (e) {
+      setStatus("Signatur-Link konnte nicht erzeugt werden: " + e.message, true);
+      return;
+    }
+  }
+
+  const link = `${CONFIG.SIGN_FORM_URL}?row=${c.rowIndex}&token=${encodeURIComponent(c.signToken)}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    setStatus(`Signatur-Link für ${c.name} kopiert.`);
+  } catch (e) {
+    window.prompt("Link kopieren (Strg+C):", link);
+  }
 }
