@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=22" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -72,13 +72,6 @@
       </div>
 
       <div id="view-tasks" class="view hidden">
-        <div class="filter-row">
-          <div class="filters">
-            <button id="filter-mine" class="active">Nur meine</button>
-            <button id="filter-all">Ganzes Team</button>
-          </div>
-        </div>
-
         <form id="new-task-form" class="new-task-form">
           <div class="row">
             <input type="text" name="title" placeholder="Neue Aufgabe" required />
@@ -98,6 +91,13 @@
           <textarea name="notes" placeholder="Notizen (optional)" rows="2"></textarea>
           <button type="submit" class="btn primary">Aufgabe hinzufügen</button>
         </form>
+
+        <div class="filter-row">
+          <div class="filters">
+            <button id="filter-mine" class="active">Nur meine</button>
+            <button id="filter-all">Ganzes Team</button>
+          </div>
+        </div>
 
         <div id="sections"></div>
       </div>
@@ -280,6 +280,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>
