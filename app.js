@@ -1355,7 +1355,7 @@ function openRiderModal(rowIndex) {
           return `<div class="rider-list-row">
             <span>${escapeHtml(t.title.replace(NEED_PREFIX, ""))}</span>
             <span class="qty">${escapeHtml(t.assigneeName || "niemand")} · ${dueLabel}</span>
-            <span style="width:20px"></span>
+            <button type="button" class="rider-delete-booking" data-need-row="${t.rowIndex}" title="Bedarf entfernen"><i class="ti ti-trash"></i></button>
           </div>`;
         })
         .join("")
@@ -1367,8 +1367,12 @@ function openRiderModal(rowIndex) {
     ${needsHtml ? `<div class="rider-section-title rider-section-spaced">Externes Equipment</div>${needsHtml}` : ""}
   `;
 
-  listEl.querySelectorAll(".rider-delete-booking").forEach((btn) => {
+  listEl.querySelectorAll("[data-booking-row]").forEach((btn) => {
     btn.addEventListener("click", () => deleteBooking(parseInt(btn.dataset.bookingRow, 10)));
+  });
+
+  listEl.querySelectorAll("[data-need-row]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteNeed(parseInt(btn.dataset.needRow, 10)));
   });
 
   document.getElementById("rider-done-checkbox").checked = ev.items.rider.status === "vorhanden";
@@ -1378,6 +1382,31 @@ function openRiderModal(rowIndex) {
 // Technik-Bedarfe (als Aufgaben angelegt) für ein Event
 function externalNeedsFor(project) {
   return tasks.filter((t) => t.title.startsWith(NEED_PREFIX) && t.project === project);
+}
+
+async function deleteNeed(taskRowIndex) {
+  const t = tasks.find((x) => x.rowIndex === taskRowIndex);
+  if (!t) return;
+
+  const titel = t.title.replace(NEED_PREFIX, "");
+  if (!window.confirm(`Bedarf "${titel}" wirklich löschen? Die zugehörige Aufgabe wird ebenfalls entfernt.`)) return;
+
+  // Zeile im Aufgaben-Blatt leeren (Spalten A–J)
+  const range = sheetRange(`A${taskRowIndex}:J${taskRowIndex}`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [["", "", "", "", "", "", "", "", "", ""]] }),
+    });
+    tasks = tasks.filter((x) => x.rowIndex !== taskRowIndex);
+    setStatus("Bedarf entfernt.");
+    if (riderModalRowIndex) openRiderModal(riderModalRowIndex);
+    renderEvents();
+  } catch (e) {
+    setStatus("Bedarf konnte nicht entfernt werden: " + e.message, true);
+  }
 }
 
 function closeRiderModal() {
