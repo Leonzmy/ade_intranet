@@ -1515,3 +1515,96 @@ details summary {
   background: var(--accent);
   color: var(--accent-text);
 }
+
+/* ---------- Termin-Kategorien ---------- */
+
+.legend-dot.legend-orga { background: #2f5fa8; }
+.legend-dot.legend-probe { background: #1a7a3c; }
+.legend-dot.legend-konzert { background: #d6293e; }
+.legend-dot.legend-besuch { background: #b5650a; }
+
+.cal-chip { cursor: pointer; }
+.cal-chip.is-orga { background: #e8eef8; color: #2f5fa8; }
+.cal-chip.is-probe { background: #e6f4ea; color: #1a7a3c; }
+.cal-chip.is-konzert { background: #fbe7ea; color: #d6293e; }
+.cal-chip.is-besuch { background: #fdf1e2; color: #b5650a; }
+
+.cal-week-event { cursor: pointer; }
+.cal-week-event.is-orga { background: #e8eef8; color: #2f5fa8; }
+.cal-week-event.is-probe { background: #e6f4ea; color: #1a7a3c; }
+.cal-week-event.is-konzert { background: #fbe7ea; color: #d6293e; }
+.cal-week-event.is-besuch { background: #fdf1e2; color: #b5650a; }
+
+/* ---------- Termin-Detailansicht ---------- */
+
+.termin-row {
+  display: flex;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+.termin-row:last-child { border-bottom: none; }
+
+.termin-row-label {
+  width: 130px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.termin-row-value { flex: 1; min-width: 0; line-height: 1.5; }
+.termin-row-value a { color: var(--accent); font-weight: 500; }
+
+.termin-attendee { padding: 2px 0; }
+.termin-attendee-status { color: var(--text-muted); font-size: 11.5px; }
+
+/* ---------- Nächster Termin (Dashboard) ---------- */
+
+.next-event-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--text-muted);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.next-event-card:hover { border-color: var(--text-secondary); }
+.next-event-card.is-orga { border-left-color: #2f5fa8; }
+.next-event-card.is-probe { border-left-color: #1a7a3c; }
+.next-event-card.is-konzert { border-left-color: #d6293e; }
+.next-event-card.is-besuch { border-left-color: #b5650a; }
+
+.next-event-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.next-event-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.next-event-meta { font-size: 12.5px; color: var(--text-secondary); }
+
+#event-attendees-select {
+  font-family: var(--font);
+  font-size: 13px;
+  padding: 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
