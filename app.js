@@ -121,6 +121,7 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.contractGenerateBtn, handleGenerateContract);
   bindClick(document.getElementById("bio-modal-close"), closeBioModal);
   bindClick(document.getElementById("termin-modal-close"), closeTerminModal);
+  bindClick(document.getElementById("termin-delete-btn"), deleteTermin);
   const terminModalEl = document.getElementById("termin-modal");
   if (terminModalEl) {
     terminModalEl.addEventListener("click", (e) => {
@@ -2518,11 +2519,47 @@ function openTerminModal(eventId) {
   gcalLink.href = ev.htmlLink || "#";
   gcalLink.style.display = ev.htmlLink ? "" : "none";
 
+  currentTerminId = eventId;
+  // Automatische Deadlines lassen sich nicht einzeln löschen — die steuert
+  // die Aufgabenliste, ein manuelles Löschen würde beim nächsten Sync
+  // ohnehin wieder rückgängig gemacht.
+  const delBtn = document.getElementById("termin-delete-btn");
+  if (delBtn) delBtn.style.display = isDeadlineEvent(ev) ? "none" : "";
+
   document.getElementById("termin-modal").classList.remove("hidden");
 }
 
 function closeTerminModal() {
   document.getElementById("termin-modal").classList.add("hidden");
+  currentTerminId = null;
+}
+
+let currentTerminId = null;
+
+async function deleteTermin() {
+  if (!currentTerminId) return;
+  const ev = findLoadedEvent(currentTerminId);
+  if (!ev) return;
+
+  if (isDeadlineEvent(ev)) {
+    setStatus("Das ist eine automatische Aufgaben-Deadline — sie verschwindet, sobald die Aufgabe erledigt oder gelöscht ist.", true);
+    return;
+  }
+
+  const titel = ev.summary || "(ohne Titel)";
+  if (!window.confirm(`Termin "${titel}" wirklich löschen? Das lässt sich nicht rückgängig machen.`)) return;
+
+  const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(currentTerminId)}?sendUpdates=all`;
+  try {
+    await apiFetch(url, { method: "DELETE" });
+    closeTerminModal();
+    setStatus("Termin gelöscht.");
+    await loadCalendar();
+    renderDashboard();
+  } catch (e) {
+    setStatus("Termin konnte nicht gelöscht werden: " + e.message, true);
+  }
 }
 
 // Teilnehmer-Auswahl im Formular aus den Stammdaten befüllen
