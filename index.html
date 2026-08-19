@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=24" />
+  <link rel="stylesheet" href="style.css?v=25" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -139,6 +139,11 @@
             <input type="url" name="zoomLink" placeholder="Zoom-Link (optional)" />
           </div>
           <div class="row">
+            <select name="linkedEvent" id="event-linked-select">
+              <option value="">Keinem Event zugeordnet</option>
+            </select>
+          </div>
+          <div class="row">
             <select name="attendees" id="event-attendees-select" multiple size="4"></select>
           </div>
           <textarea name="description" placeholder="Notizen zum Termin (optional)" rows="2"></textarea>
@@ -251,6 +256,20 @@
         </div>
       </div>
     </div>
+    <div id="probenplan-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" id="probenplan-modal-title">Probenplan</div>
+          <button type="button" id="probenplan-modal-close" class="btn" aria-label="Schließen"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="modal-body" id="probenplan-modal-list"></div>
+        <div class="modal-footer">
+          <span id="probenplan-hint" class="contract-status"></span>
+          <button type="button" id="probenplan-csv-btn" class="btn"><i class="ti ti-download"></i> CSV</button>
+        </div>
+      </div>
+    </div>
+
     <div id="termin-modal" class="modal-overlay hidden">
       <div class="modal-box">
         <div class="modal-header">
@@ -280,6 +299,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
