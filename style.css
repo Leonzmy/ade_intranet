@@ -1699,8 +1699,8 @@ details summary {
   min-width: 0;
 }
 
-.piece-input:first-of-type { flex: 1; }
-.piece-input:last-of-type { flex: 1.6; }
+.piece-input:first-of-type { flex: 1 1 0; }
+.piece-input:last-of-type { flex: 1.6 1 0; }
 
 .piece-status {
   font-size: 11px;
@@ -1713,6 +1713,8 @@ details summary {
   white-space: nowrap;
   background: var(--surface-2);
   color: var(--text-muted);
+  width: 96px;
+  text-align: center;
 }
 
 .piece-status.idee { background: var(--surface-2); color: var(--text-muted); }
