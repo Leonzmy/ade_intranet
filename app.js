@@ -354,7 +354,15 @@ function addDaysStr(dateStr, n) {
 async function syncDeadlinesToCalendar() {
   try {
     const calId = encodeURIComponent(CONFIG.CALENDAR_ID);
-    const listUrl = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?privateExtendedProperty=fdSource%3Ddeadline&maxResults=250&singleEvents=true`;
+    // Bewusst weiter Zeitraum: ohne timeMin listet Google nur künftige
+    // Termine — vergangene (überfällige) Deadlines würden dann nie gelöscht.
+    const tMin = new Date();
+    tMin.setFullYear(tMin.getFullYear() - 2);
+    const tMax = new Date();
+    tMax.setFullYear(tMax.getFullYear() + 3);
+    const listUrl = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`
+      + `?privateExtendedProperty=fdSource%3Ddeadline&maxResults=250&singleEvents=true`
+      + `&timeMin=${tMin.toISOString()}&timeMax=${tMax.toISOString()}`;
     const data = await apiFetch(listUrl);
     const existingByTaskId = {};
     (data.items || []).forEach((ev) => {
@@ -992,8 +1000,9 @@ async function deleteTask(rowIndex) {
     expandedRow = null;
     setStatus("Aufgabe gelöscht.");
     renderTasks();
-    // Deadline im Kalender mitentfernen
+    // Deadline im Kalender mitentfernen und Ansicht auffrischen
     await syncDeadlinesToCalendar();
+    await loadCalendar();
   } catch (e) {
     setStatus("Aufgabe konnte nicht gelöscht werden: " + e.message, true);
   }
@@ -1151,7 +1160,7 @@ function contactsSheetRange(a1) {
 
 async function loadContacts() {
   try {
-    const range = contactsSheetRange("A2:K300");
+    const range = contactsSheetRange("A2:M300");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     contactsData = (data.values || [])
@@ -1167,7 +1176,9 @@ async function loadContacts() {
         city: r[7] || "",
         country: r[8] || "",
         phone: r[9] || "",
-        token: r[10] || "",
+        instrument: r[10] || "",
+        contactPerson: r[11] || "",
+        token: r[12] || "",
       }))
       .filter((c) => c.name);
   } catch (e) {
@@ -1216,14 +1227,14 @@ async function syncContacts() {
         const resp = await apiFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", "", "", "", "", token]] }),
+          body: JSON.stringify({ values: [[name, roleStr, eventsStr, "", "", "", "", "", "", "", "", "", token]] }),
         });
         const updatedRange = resp?.updates?.updatedRange || "";
         const rowMatch = updatedRange.match(/![A-Z]+(\d+)/);
         const newRowIndex = rowMatch ? parseInt(rowMatch[1], 10) : null;
         contactsData.push({
           rowIndex: newRowIndex, name, role: roleStr, events: eventsStr,
-          email: "", street: "", houseNumber: "", zip: "", city: "", country: "", phone: "", token,
+          email: "", street: "", houseNumber: "", zip: "", city: "", country: "", phone: "", instrument: "", contactPerson: "", token,
         });
       } catch (e) {
         // weiter mit den übrigen Namen, auch wenn einer fehlschlägt
@@ -1296,6 +1307,7 @@ function renderContacts() {
     <div class="contact-name">Name</div>
     <div class="contact-role">Rolle</div>
     <div class="contact-role">Event</div>
+    <div class="contact-field-sm">Instrument / Kontakt</div>
     <div class="contact-field">Email</div>
     <div class="contact-field">Adresse</div>
     <div class="contact-field-sm">Telefon</div>
@@ -1310,6 +1322,11 @@ function renderContacts() {
         <div class="contact-name">${escapeHtml(c.name)}</div>
         <div class="contact-role">${escapeHtml(c.role)}</div>
         <div class="contact-role">${escapeHtml(c.events || "—")}</div>
+        <input type="text" class="contact-extra-input"
+          placeholder="${(c.role || "").includes("Ensemble") ? "Ansprechperson" : "Instrument"}"
+          value="${escapeHtml((c.role || "").includes("Ensemble") ? c.contactPerson : c.instrument)}"
+          data-row="${c.rowIndex}" data-col="${(c.role || "").includes("Ensemble") ? "L" : "K"}"
+          data-field="${(c.role || "").includes("Ensemble") ? "contactPerson" : "instrument"}" />
         <div class="contact-static">${c.email ? escapeHtml(c.email) : "—"}</div>
         <div class="contact-static">${escapeHtml(formatAddress(c))}</div>
         <div class="contact-static">${c.phone ? escapeHtml(c.phone) : "—"}</div>
@@ -1323,6 +1340,29 @@ function renderContacts() {
   container.querySelectorAll(".contact-link-btn").forEach((btn) => {
     btn.addEventListener("click", () => copyContactLink(parseInt(btn.dataset.row, 10)));
   });
+
+  container.querySelectorAll(".contact-extra-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      updateContactExtra(parseInt(input.dataset.row, 10), input.dataset.col, input.dataset.field, input.value.trim());
+    });
+  });
+}
+
+async function updateContactExtra(rowIndex, col, field, value) {
+  const c = contactsData.find((x) => x.rowIndex === rowIndex);
+  if (!c) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${contactsSheetRange(`${col}${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    c[field] = value;
+    setStatus("Gespeichert.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 async function copyContactLink(rowIndex) {
@@ -1331,7 +1371,7 @@ async function copyContactLink(rowIndex) {
 
   if (!c.token) {
     const newToken = genToken();
-    const range = contactsSheetRange(`K${rowIndex}`);
+    const range = contactsSheetRange(`M${rowIndex}`);
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}?valueInputOption=RAW`;
     try {
       await apiFetch(url, {
