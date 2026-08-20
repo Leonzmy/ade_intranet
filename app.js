@@ -162,8 +162,14 @@ window.addEventListener("DOMContentLoaded", () => {
   bindClick(els.btnMine, () => setFilter(true));
   bindClick(els.btnAll, () => setFilter(false));
   els.navItems.forEach((btn) => {
-    btn.addEventListener("click", () => switchView(btn.dataset.view));
+    btn.addEventListener("click", () => {
+      switchView(btn.dataset.view);
+      closeMobileMenu();
+    });
   });
+
+  bindClick(document.getElementById("menu-toggle"), toggleMobileMenu);
+  bindClick(document.getElementById("sidebar-backdrop"), closeMobileMenu);
   const dashCalCard = document.getElementById("dashboard-calendar-card");
   if (dashCalCard) dashCalCard.addEventListener("click", () => switchView("calendar"));
   bindSubmit(els.newTaskForm, handleNewTask);
@@ -754,6 +760,21 @@ function setFilter(mine) {
   renderTasks();
 }
 
+function toggleMobileMenu() {
+  const sb = document.getElementById("sidebar");
+  const bd = document.getElementById("sidebar-backdrop");
+  if (!sb) return;
+  const open = sb.classList.toggle("open");
+  if (bd) bd.classList.toggle("open", open);
+}
+
+function closeMobileMenu() {
+  const sb = document.getElementById("sidebar");
+  const bd = document.getElementById("sidebar-backdrop");
+  if (sb) sb.classList.remove("open");
+  if (bd) bd.classList.remove("open");
+}
+
 function switchView(view) {
   els.navItems.forEach((btn) => btn.classList.toggle("active", btn.dataset.view === view));
   els.views.forEach((v) => v.classList.toggle("hidden", v.id !== `view-${view}`));
@@ -1320,8 +1341,8 @@ function renderContacts() {
     .map(
       (c) => `<div class="inv-row contact-row">
         <div class="contact-name">${escapeHtml(c.name)}</div>
-        <div class="contact-role">${escapeHtml(c.role)}</div>
-        <div class="contact-role">${escapeHtml(c.events || "—")}</div>
+        <div class="contact-role">${escapeHtml(c.role)}<span class="contact-inline-events">${c.events ? ` · ${escapeHtml(c.events)}` : ""}</span></div>
+        <div class="contact-role contact-events-col">${escapeHtml(c.events || "—")}</div>
         ${(() => {
           const role = c.role || "";
           const isEnsemble = role.includes("Ensemble");
