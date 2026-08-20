@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=44" />
+  <link rel="stylesheet" href="style.css?v=45" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -21,6 +21,7 @@
 
   <div id="app" class="hidden app-shell">
     <div class="topbar-slim">
+      <button type="button" id="menu-toggle" class="menu-toggle" aria-label="Menü"><i class="ti ti-menu-2"></i></button>
       <div class="festival-badge small">19. aDe-Festival <span class="badge-divider">|</span> <span class="badge-urgent">URGENT</span></div>
       <div class="topbar-slim-account">
         <span id="user-label"></span>
@@ -29,7 +30,8 @@
     </div>
 
     <div class="app-body">
-    <aside class="sidebar">
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-stub"></div>
       </div>
@@ -309,6 +311,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
 </body>
 </html>
