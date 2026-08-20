@@ -1322,11 +1322,17 @@ function renderContacts() {
         <div class="contact-name">${escapeHtml(c.name)}</div>
         <div class="contact-role">${escapeHtml(c.role)}</div>
         <div class="contact-role">${escapeHtml(c.events || "—")}</div>
-        <input type="text" class="contact-extra-input"
-          placeholder="${(c.role || "").includes("Ensemble") ? "Ansprechperson" : "Instrument"}"
-          value="${escapeHtml((c.role || "").includes("Ensemble") ? c.contactPerson : c.instrument)}"
-          data-row="${c.rowIndex}" data-col="${(c.role || "").includes("Ensemble") ? "L" : "K"}"
-          data-field="${(c.role || "").includes("Ensemble") ? "contactPerson" : "instrument"}" />
+        ${(() => {
+          const role = c.role || "";
+          const isEnsemble = role.includes("Ensemble");
+          const isInterpret = role.includes("Interpret");
+          if (!isEnsemble && !isInterpret) return `<div class="contact-static">—</div>`;
+          return `<input type="text" class="contact-extra-input"
+            placeholder="${isEnsemble ? "Ansprechperson" : "Instrument"}"
+            value="${escapeHtml(isEnsemble ? c.contactPerson : c.instrument)}"
+            data-row="${c.rowIndex}" data-col="${isEnsemble ? "L" : "K"}"
+            data-field="${isEnsemble ? "contactPerson" : "instrument"}" />`;
+        })()}
         <div class="contact-static">${c.email ? escapeHtml(c.email) : "—"}</div>
         <div class="contact-static">${escapeHtml(formatAddress(c))}</div>
         <div class="contact-static">${c.phone ? escapeHtml(c.phone) : "—"}</div>
@@ -2316,7 +2322,7 @@ const CONTRACT_ROLES = [
 
 const CONTRACT_ROLE_FIELDS = {
   "Ensemble": [{ key: "GESAMTSUMME", label: "Vereinbarte Gesamtsumme" }],
-  "Interpret:in": [{ key: "INSTRUMENT", label: "Instrument" }],
+  "Interpret:in": [],
   "Komponist:in": [
     { key: "LAENGE", label: "Länge der Komposition" },
     { key: "HONORAR", label: "Vereinbartes Honorar" },
@@ -2458,8 +2464,22 @@ function openContractModal(name, event, category, roleKey) {
     GESAMTSUMME: existing?.gesamtsumme || "",
   };
 
+  // Werte, die automatisch aus den Kontaktdaten kommen, zur Info anzeigen
+  const autoRows = [];
+  if (category === "Interpret:in") {
+    autoRows.push(["Instrument", contact?.instrument || "— in den Kontakten nachtragen —"]);
+  }
+  if (category === "Ensemble") {
+    autoRows.push(["Ansprechperson", contact?.contactPerson || "— in den Kontakten nachtragen —"]);
+  }
+  const autoHtml = autoRows.length
+    ? `<div class="contract-auto">${autoRows
+        .map(([l, v]) => `<div><span>${escapeHtml(l)}</span>${escapeHtml(v)}</div>`)
+        .join("")}</div>`
+    : "";
+
   const fieldsEl = document.getElementById("contract-fields");
-  fieldsEl.innerHTML = `<div class="contract-fields-grid">${fieldsDef
+  fieldsEl.innerHTML = autoHtml + `<div class="contract-fields-grid">${fieldsDef
     .map(
       (f) => `<div class="contract-field-card">
         <label for="contract-field-${f.key}">${escapeHtml(f.label)}</label>
@@ -2527,6 +2547,9 @@ async function handleGenerateContract() {
     EVENT: event,
     DATUM: ev?.date || "",
     FESTIVAL: CONFIG.DEFAULT_FESTIVAL || "",
+    // Aus der Kontaktdatenbank übernommen, nicht im Formular abgefragt
+    INSTRUMENT: contact?.instrument || "",
+    ANSPRECHPERSON: contact?.contactPerson || "",
   };
   fieldsDef.forEach((f) => {
     const input = document.getElementById(`contract-field-${f.key}`);
