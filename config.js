@@ -48,6 +48,10 @@ const CONFIG = {
   CONTRACT_DETAILS_SHEET_NAME: "Vertragsdetails",
 ADMIN_KEY: "ade19-intern-9f3k2m",
   
+  // Blatt und Vorlage für Einverständniserklärungen (Förderanträge)
+  EINVERSTAENDNIS_SHEET_NAME: "Einverstaendnis",
+  EINVERSTAENDNIS_TEMPLATE: "https://docs.google.com/document/d/1fEV4yndlTgVUTPi_fq7HUd5v7s8F1H4be3BoUuYZ4qc/edit?tab=t.0",
+  
     // Feste Vertragsvorlagen (nicht im Frontend änderbar)
   CONTRACT_TEMPLATES: {
     "Ensemble": "https://docs.google.com/document/d/1Cbh_-Mp9tjHaa6z7RK-F2Q223C-Tc-KL-LHNDJBbOEo/edit",
