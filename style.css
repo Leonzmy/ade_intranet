@@ -1856,17 +1856,49 @@ details summary {
   font-weight: 500;
 }
 
-.event-resp-icon { margin-left: auto; }
+.event-resp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
 
-.event-resp-select {
+.event-resp-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.resp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.resp-chip {
   font-family: var(--font);
-  font-size: 13px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  max-width: 150px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .12s ease;
+}
+
+.resp-chip:hover { border-color: var(--text-muted); }
+
+.resp-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .dashboard-header {
@@ -2130,5 +2162,6 @@ details summary {
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
-  max-width: 140px;
+  flex: 1;
+  min-width: 0;
 }
