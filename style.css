@@ -2217,3 +2217,24 @@ details summary {
   background: var(--surface);
   color: var(--text);
 }
+
+.buehnenplan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.buehnenplan-link {
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.buehnenplan-leer { font-size: 12.5px; color: var(--text-muted); }
+
+.buehnenplan-upload { cursor: pointer; margin: 0; }
+.buehnenplan-upload .btn { font-size: 12px; padding: 5px 12px; display: inline-block; }
