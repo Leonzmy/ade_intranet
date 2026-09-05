@@ -3679,6 +3679,8 @@ async function downloadProduktionsplan(rowIndex) {
   const merges = [];      // verbundene Zellen
   const headingRows = []; // Zeilennummern der Abschnittsüberschriften
   const labelRows = [];   // Zeilennummern der Tabellenköpfe
+  const tableBlocks = []; // {von, bis, spalten} je Tabellenbereich für Rahmen
+  const pageBreaks = [];  // Zeilennummern, vor denen umbrochen wird
 
   const push = (cells) => { rows.push(cells); return rows.length - 1; };
   const heading = (text) => {
@@ -3687,7 +3689,18 @@ async function downloadProduktionsplan(rowIndex) {
     merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
     return r;
   };
-  const labels = (cells) => { labelRows.push(push(cells)); };
+  const labels = (cells) => {
+    const r = push(cells);
+    labelRows.push(r);
+    tableBlocks.push({ von: r, bis: r, spalten: cells.length });
+    return r;
+  };
+  // Datenzeile innerhalb der zuletzt begonnenen Tabelle
+  const dataRow = (cells) => {
+    const r = push(cells);
+    if (tableBlocks.length) tableBlocks[tableBlocks.length - 1].bis = r;
+    return r;
+  };
   const leer = () => push([]);
 
   // ---- Kopf ----
@@ -3750,7 +3763,7 @@ async function downloadProduktionsplan(rowIndex) {
   termine.forEach((p) => {
     const st = new Date(p.start.dateTime || p.start.date + "T00:00:00");
     const en = p.end?.dateTime ? new Date(p.end.dateTime) : null;
-    push([
+    dataRow([
       st.toLocaleDateString("de-DE"),
       p.start.dateTime ? st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "ganztägig",
       en ? en.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
@@ -3759,9 +3772,9 @@ async function downloadProduktionsplan(rowIndex) {
     ]);
   });
   if (ev.date) {
-    push([dateLabel(ev.date), "", "", `KONZERT — ${ev.project}`, raum ? raum.name : (ev.raum || "")]);
+    dataRow([dateLabel(ev.date), "", "", `KONZERT — ${ev.project}`, raum ? raum.name : (ev.raum || "")]);
   }
-  if (termine.length === 0 && !ev.date) push(["— keine Termine hinterlegt —"]);
+  if (termine.length === 0 && !ev.date) dataRow(["— keine Termine hinterlegt —"]);
 
   // ---- Beteiligte ----
   leer();
@@ -3772,21 +3785,22 @@ async function downloadProduktionsplan(rowIndex) {
     names.forEach((name) => {
       const c = contactsData.find((x) => x.name === name);
       const extra = c ? (c.instrument || c.contactPerson || "") : "";
-      push([name, c?.role || "", extra, c?.email || "", c?.phone ? String(c.phone) : ""]);
+      dataRow([name, c?.role || "", extra, c?.email || "", c?.phone ? String(c.phone) : ""]);
     });
   } else {
-    push(["— noch niemand eingetragen —"]);
+    dataRow(["— noch niemand eingetragen —"]);
   }
 
-  // ---- Technical Rider ----
+  // ---- Technical Rider (auf neuer Seite) ----
   leer();
+  pageBreaks.push(rows.length);
   heading("TECHNICAL RIDER — AUS DEM INVENTAR");
   labels(["Equipment", "Anzahl", "Datum", "Notiz"]);
   const projectBookings = bookings.filter((b) => b.project === ev.project);
   if (projectBookings.length) {
-    projectBookings.forEach((b) => push([b.equipment, b.qty, dateLabel(b.date), b.note]));
+    projectBookings.forEach((b) => dataRow([b.equipment, b.qty, dateLabel(b.date), b.note]));
   } else {
-    push(["— nichts gebucht —"]);
+    dataRow(["— nichts gebucht —"]);
   }
 
   leer();
@@ -3794,23 +3808,24 @@ async function downloadProduktionsplan(rowIndex) {
   labels(["Bedarf", "Verantwortlich", "Deadline", "Status"]);
   const needs = externalNeedsFor(ev.project);
   if (needs.length) {
-    needs.forEach((t) => push([
+    needs.forEach((t) => dataRow([
       t.title.replace(NEED_PREFIX, ""),
       t.assigneeName || "",
       dateLabel(t.due),
       t.status === "erledigt" ? "erledigt" : "offen",
     ]));
   } else {
-    push(["— kein externer Bedarf —"]);
+    dataRow(["— kein externer Bedarf —"]);
   }
 
   // ---- Programm ----
   const pieces = piecesOfEvent(ev.project);
   if (pieces.length) {
     leer();
+    pageBreaks.push(rows.length);
     heading("PROGRAMM");
     labels(["Nr.", "Komponist:in", "Titel"]);
-    pieces.forEach((p, i) => push([i + 1, p.komponist, p.titel]));
+    pieces.forEach((p, i) => dataRow([i + 1, p.komponist, p.titel]));
   }
 
   // ---- Excel-Datei bauen ----
@@ -3848,10 +3863,53 @@ async function downloadProduktionsplan(rowIndex) {
     alignment: { vertical: "center" },
   }));
 
+  const duenn = { style: "thin", color: { rgb: "B9BECC" } };
+  const dick = { style: "medium", color: { rgb: "4A4F5C" } };
+
   labelRows.forEach((r) => setStyle(r, {
     font: { bold: true, sz: 10 },
     fill: { fgColor: { rgb: "E8EAF0" } },
+    border: { top: dick, bottom: duenn, left: duenn, right: duenn },
   }));
+
+  // Tabellenbereiche einrahmen, damit sie als geschlossene Blöcke lesbar sind
+  tableBlocks.forEach((blk) => {
+    for (let r = blk.von; r <= blk.bis; r++) {
+      for (let c = 0; c < blk.spalten; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) ws[addr] = { t: "s", v: "" };
+        const vorhanden = ws[addr].s || {};
+        ws[addr].s = {
+          ...vorhanden,
+          border: {
+            top: r === blk.von ? dick : duenn,
+            bottom: r === blk.bis ? dick : duenn,
+            left: c === 0 ? dick : duenn,
+            right: c === blk.spalten - 1 ? dick : duenn,
+          },
+          alignment: { vertical: "center", wrapText: true },
+        };
+        // Zebrastreifen für bessere Lesbarkeit in langen Tabellen
+        if (r > blk.von && (r - blk.von) % 2 === 0) {
+          ws[addr].s.fill = { fgColor: { rgb: "F7F8FB" } };
+        }
+      }
+    }
+  });
+
+  // Querformat, schmale Ränder, alles auf Seitenbreite
+  ws["!margins"] = { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 };
+  ws["!pageSetup"] = { orientation: "landscape", fitToWidth: 1, fitToHeight: 0, scale: 100 };
+
+  // Seitenumbrüche vor Technical Rider und Programm
+  if (pageBreaks.length) {
+    ws["!rowBreaks"] = pageBreaks.map((r) => ({ start: r }));
+  }
+
+  // Zeilenhöhen: Überschriften etwas luftiger
+  ws["!rows"] = [];
+  ws["!rows"][titelZeile] = { hpt: 26 };
+  headingRows.forEach((r) => { ws["!rows"][r] = { hpt: 20 }; });
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Produktionsplan");
