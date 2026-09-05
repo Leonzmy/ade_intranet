@@ -2156,16 +2156,20 @@ function renderEvents() {
         <div class="event-date-row">
           <i class="ti ti-calendar-event"></i>
           <input type="date" class="event-date-input" value="${escapeHtml(ev.date)}" data-row="${ev.rowIndex}" />
-          <i class="ti ti-map-pin event-resp-icon"></i>
+          <i class="ti ti-map-pin"></i>
           <select class="event-raum-select" data-row="${ev.rowIndex}">
             <option value="">Raum…</option>
             ${raeumeData.map((r) => `<option value="${escapeHtml(r.name)}" ${r.name === ev.raum ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
           </select>
-          <i class="ti ti-user-check"></i>
-          <select class="event-resp-select" data-row="${ev.rowIndex}">
-            <option value="">Verantwortlich…</option>
-            ${peopleList.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name === ev.verantwortlich ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
-          </select>
+        </div>
+        <div class="event-resp-row">
+          <div class="event-resp-label"><i class="ti ti-user-check"></i> Verantwortlich</div>
+          <div class="resp-chips">
+            ${peopleList.map((p) => {
+              const active = (ev.verantwortlich || "").split(",").map((x) => x.trim()).includes(p.name);
+              return `<button type="button" class="resp-chip ${active ? "active" : ""}" data-row="${ev.rowIndex}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.kuerzel || p.name)}</button>`;
+            }).join("")}
+          </div>
         </div>
         <div class="event-people">
           <div class="event-people-field">
@@ -2267,9 +2271,9 @@ function renderEvents() {
     });
   });
 
-  container.querySelectorAll(".event-resp-select").forEach((sel) => {
-    sel.addEventListener("change", () => {
-      updateEventVerantwortlich(parseInt(sel.dataset.row, 10), sel.value);
+  container.querySelectorAll(".resp-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      toggleEventVerantwortlich(parseInt(chip.dataset.row, 10), chip.dataset.name);
     });
   });
 
@@ -2296,6 +2300,18 @@ async function updateEventRaum(rowIndex, raum) {
   } catch (e) {
     setStatus("Konnte nicht gespeichert werden: " + e.message, true);
   }
+}
+
+// Eine Person zur Verantwortung hinzufügen oder entfernen (mehrere möglich)
+async function toggleEventVerantwortlich(rowIndex, name) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const current = (ev.verantwortlich || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const next = current.includes(name)
+    ? current.filter((x) => x !== name)
+    : [...current, name];
+  await updateEventVerantwortlich(rowIndex, next.join(", "));
+  renderEvents();
 }
 
 async function updateEventVerantwortlich(rowIndex, name) {
