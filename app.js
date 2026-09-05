@@ -19,6 +19,8 @@ const SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/userinfo.email",
+  // Nur lesend — nötig, um den Bühnenplan beim Produktionsplan mitzuladen
+  "https://www.googleapis.com/auth/drive.readonly",
 ].join(" ");
 
 let accessToken = null;
@@ -3760,7 +3762,7 @@ async function downloadProduktionsplan(rowIndex) {
   } else {
     push([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]);
   }
-  if (ev.buehnenplan) push(["Bühnenplan", ev.buehnenplan]);
+  if (ev.buehnenplan) push(["Bühnenplan", "siehe separate Datei"]);
 
   // ---- Ablauf & Organisation ----
   const orgVorhanden = ORG_FIELDS.filter((f) => (ev[f.key] || "").trim());
@@ -3937,7 +3939,14 @@ async function downloadProduktionsplan(rowIndex) {
   XLSX.utils.book_append_sheet(wb, ws, "Produktionsplan");
   XLSX.writeFile(wb, `produktionsplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.xlsx`);
 
-  setStatus("Produktionsplan heruntergeladen.");
+  // Bühnenplan als eigene Datei mitliefern, damit er ausgedruckt werden kann
+  if (ev.buehnenplan) {
+    await downloadBuehnenplanDatei(ev);
+  }
+
+  setStatus(ev.buehnenplan
+    ? "Produktionsplan und Bühnenplan heruntergeladen."
+    : "Produktionsplan heruntergeladen.");
 }
 
 // Bühnenplan hochladen: Datei ans Backend schicken, Link im Sheet ablegen
@@ -3995,5 +4004,37 @@ async function uploadBuehnenplan(rowIndex, file) {
     renderEvents();
   } catch (e) {
     setStatus("Bühnenplan konnte nicht hochgeladen werden: " + e.message, true);
+  }
+}
+
+// Bühnenplan-Datei aus Drive holen und lokal speichern
+async function downloadBuehnenplanDatei(ev) {
+  const idMatch = String(ev.buehnenplan).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (!idMatch) return;
+  const fileId = idMatch[1];
+
+  try {
+    // Über die Drive-API mit dem Token der eingeloggten Person laden
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: "Bearer " + accessToken } }
+    );
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+
+    const blob = await res.blob();
+    const ext = blob.type.includes("pdf") ? "pdf"
+      : blob.type.includes("png") ? "png"
+      : blob.type.includes("jpeg") ? "jpg" : "dat";
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `buehnenplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    setStatus("Bühnenplan konnte nicht mitgeladen werden — bitte direkt in Drive öffnen.", true);
   }
 }
