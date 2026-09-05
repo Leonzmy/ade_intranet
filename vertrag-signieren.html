@@ -179,11 +179,14 @@
 
   <script>
     // Dieselbe Web-App-URL wie in den anderen Formularen
-    const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzoRSi9lxr3xZ4S4DK73rRXZ5J8LnY3_URgVNkEHf1Dm2SESF7mDmYQ9d5VWVlfZUFEJQ/exec";
+    const WEBAPP_URL = "TRAGE_HIER_DEINE_WEB_APP_URL_EIN";
 
     const params = new URLSearchParams(location.search);
     const row = params.get("row");
     const token = params.get("token");
+    // "vertrag" (Standard) oder "einverstaendnis"
+    const docType = params.get("type") === "einverstaendnis" ? "einverstaendnis" : "signatur";
+    const istEinv = docType === "einverstaendnis";
 
     const loadingEl = document.getElementById("loading-state");
     const invalidEl = document.getElementById("invalid-state");
@@ -283,7 +286,7 @@
       }
 
       try {
-        const res = await fetch(`${WEBAPP_URL}?type=signatur&row=${encodeURIComponent(row)}&token=${encodeURIComponent(token)}`);
+        const res = await fetch(`${WEBAPP_URL}?type=${docType}&row=${encodeURIComponent(row)}&token=${encodeURIComponent(token)}`);
         const data = await res.json();
         if (!data.valid) { showInvalid(); return; }
 
@@ -292,6 +295,14 @@
           signedEl.classList.remove("hidden");
           document.getElementById("signed-doc-link").href = data.signedPdfUrl || "#";
           return;
+        }
+
+        if (istEinv) {
+          document.querySelector("#form-state h1").textContent = "Einverständniserklärung";
+          document.querySelector("#form-state p").textContent =
+            "Bitte lies die Erklärung durch und unterschreibe unten mit Maus oder Finger.";
+          document.getElementById("doc-link").textContent = "📄 Erklärung als PDF öffnen";
+          document.getElementById("submit-btn").textContent = "Erklärung unterschreiben";
         }
 
         document.getElementById("meta").innerHTML =
@@ -331,7 +342,7 @@
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
-            action: "signContract",
+            action: istEinv ? "signEinverstaendnis" : "signContract",
             row,
             token,
             signatureData: canvas.toDataURL("image/png"),
