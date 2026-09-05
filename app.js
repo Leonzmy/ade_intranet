@@ -229,6 +229,7 @@ async function enterApp() {
   await loadStammdaten();
   await loadTasks();
   await loadEvents();
+  await loadRaeume();
   fillLinkedEventSelect();
   await loadInventory();
   await loadContacts();
@@ -1986,7 +1987,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:S50");
+    const range = eventsSheetRange("A2:T50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -2011,6 +2012,7 @@ async function loadEvents() {
           komponisten: r[16] || "",
           programmtext: r[17] || "",
           verantwortlich: r[18] || "",
+          raum: r[19] || "",
         };
       })
       .filter((ev) => ev.project);
@@ -2146,12 +2148,20 @@ function renderEvents() {
       return `<div class="event-card ${colorClass}">
         <div class="event-card-header">
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
-          <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} erledigt</div>
+          <div class="event-header-right">
+            <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} erledigt</div>
+            <button type="button" class="produktionsplan-btn" data-row="${ev.rowIndex}" title="Produktionsplan als CSV"><i class="ti ti-file-download"></i></button>
+          </div>
         </div>
         <div class="event-date-row">
           <i class="ti ti-calendar-event"></i>
           <input type="date" class="event-date-input" value="${escapeHtml(ev.date)}" data-row="${ev.rowIndex}" />
-          <i class="ti ti-user-check event-resp-icon"></i>
+          <i class="ti ti-map-pin event-resp-icon"></i>
+          <select class="event-raum-select" data-row="${ev.rowIndex}">
+            <option value="">Raum…</option>
+            ${raeumeData.map((r) => `<option value="${escapeHtml(r.name)}" ${r.name === ev.raum ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
+          </select>
+          <i class="ti ti-user-check"></i>
           <select class="event-resp-select" data-row="${ev.rowIndex}">
             <option value="">Verantwortlich…</option>
             ${peopleList.map((p) => `<option value="${escapeHtml(p.name)}" ${p.name === ev.verantwortlich ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}
@@ -2247,6 +2257,16 @@ function renderEvents() {
     });
   });
 
+  container.querySelectorAll(".produktionsplan-btn").forEach((btn) => {
+    btn.addEventListener("click", () => downloadProduktionsplan(parseInt(btn.dataset.row, 10)));
+  });
+
+  container.querySelectorAll(".event-raum-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      updateEventRaum(parseInt(sel.dataset.row, 10), sel.value);
+    });
+  });
+
   container.querySelectorAll(".event-resp-select").forEach((sel) => {
     sel.addEventListener("change", () => {
       updateEventVerantwortlich(parseInt(sel.dataset.row, 10), sel.value);
@@ -2259,6 +2279,23 @@ function renderEvents() {
       updateEventDate(rowIndex, input.value);
     });
   });
+}
+
+async function updateEventRaum(rowIndex, raum) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`T${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[raum]] }),
+    });
+    ev.raum = raum;
+    setStatus(raum ? `Raum: ${raum}` : "Raum entfernt.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 async function updateEventVerantwortlich(rowIndex, name) {
@@ -3536,4 +3573,168 @@ async function copySignLink(rowIndex) {
   } catch (e) {
     window.prompt("Link kopieren (Strg+C):", link);
   }
+}
+
+// ---------- Räume ----------
+
+let raeumeData = []; // [{rowIndex, name, verantwortlich, email, telefon, adresse}]
+
+function raeumeSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.RAEUME_SHEET_NAME)}!${a1}`;
+}
+
+async function loadRaeume() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${raeumeSheetRange("A2:E20")}`;
+    const data = await apiFetch(url);
+    raeumeData = (data.values || [])
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        name: r[0],
+        verantwortlich: r[1] || "",
+        email: r[2] || "",
+        telefon: r[3] || "",
+        adresse: r[4] || "",
+      }))
+      .filter((r) => r.name);
+  } catch (e) {
+    setStatus("Räume konnten nicht geladen werden: " + e.message, true);
+  }
+}
+
+// ---------- Produktionsplan ----------
+
+async function downloadProduktionsplan(rowIndex) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+
+  setStatus("Produktionsplan wird zusammengestellt…");
+
+  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const line = (cells) => cells.map(csvEscape).join(";");
+  const dateLabel = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("de-DE") : "");
+
+  const lines = [];
+
+  // ---- Kopf ----
+  lines.push(line(["PRODUKTIONSPLAN"]));
+  lines.push(line([]));
+  lines.push(line(["Event", ev.project]));
+  lines.push(line(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]));
+  lines.push(line(["Konzertdatum", dateLabel(ev.date)]));
+  lines.push(line(["Projektverantwortung", ev.verantwortlich || "—"]));
+  lines.push(line(["Erstellt am", new Date().toLocaleDateString("de-DE")]));
+
+  // ---- Raum ----
+  lines.push(line([]));
+  lines.push(line(["VERANSTALTUNGSORT"]));
+  const raum = raeumeData.find((r) => r.name === ev.raum);
+  if (raum) {
+    lines.push(line(["Ort", raum.name]));
+    if (raum.adresse) lines.push(line(["Adresse", raum.adresse]));
+    lines.push(line(["Ansprechperson", raum.verantwortlich || "—"]));
+    lines.push(line(["E-Mail", raum.email || "—"]));
+    lines.push(line(["Telefon", raum.telefon || "—"]));
+  } else {
+    lines.push(line([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]));
+  }
+
+  // ---- Termine (Proben aus dem Kalender + Konzert) ----
+  lines.push(line([]));
+  lines.push(line(["TERMINE"]));
+  lines.push(line(["Datum", "Beginn", "Ende", "Titel", "Ort"]));
+
+  let termine = [];
+  try {
+    termine = await loadProbenFor(ev.project);
+  } catch (e) {
+    // Proben nicht ladbar — Plan trotzdem erzeugen
+  }
+
+  termine.forEach((p) => {
+    const start = new Date(p.start.dateTime || p.start.date + "T00:00:00");
+    const end = p.end?.dateTime ? new Date(p.end.dateTime) : null;
+    lines.push(line([
+      start.toLocaleDateString("de-DE"),
+      p.start.dateTime ? start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "ganztägig",
+      end ? end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
+      p.summary || "Probe",
+      p.location || "",
+    ]));
+  });
+
+  if (ev.date) {
+    lines.push(line([dateLabel(ev.date), "", "", `KONZERT — ${ev.project}`, raum ? raum.name : (ev.raum || "")]));
+  }
+  if (termine.length === 0 && !ev.date) lines.push(line(["— keine Termine hinterlegt —"]));
+
+  // ---- Beteiligte mit Kontaktdaten ----
+  lines.push(line([]));
+  lines.push(line(["BETEILIGTE"]));
+  lines.push(line(["Name", "Rolle", "Instrument / Ansprechperson", "E-Mail", "Telefon"]));
+
+  const names = peopleOfEvent(ev);
+  if (names.length) {
+    names.forEach((name) => {
+      const c = contactsData.find((x) => x.name === name);
+      const extra = c ? (c.instrument || c.contactPerson || "") : "";
+      lines.push(line([name, c?.role || "", extra, c?.email || "", c?.phone || ""]));
+    });
+  } else {
+    lines.push(line(["— noch niemand eingetragen —"]));
+  }
+
+  // ---- Technical Rider ----
+  lines.push(line([]));
+  lines.push(line(["TECHNICAL RIDER — AUS DEM INVENTAR"]));
+  lines.push(line(["Equipment", "Anzahl", "Datum", "Notiz"]));
+  const projectBookings = bookings.filter((b) => b.project === ev.project);
+  if (projectBookings.length) {
+    projectBookings.forEach((b) => {
+      lines.push(line([b.equipment, b.qty, dateLabel(b.date), b.note]));
+    });
+  } else {
+    lines.push(line(["— nichts gebucht —"]));
+  }
+
+  lines.push(line([]));
+  lines.push(line(["TECHNICAL RIDER — EXTERNES EQUIPMENT"]));
+  lines.push(line(["Bedarf", "Verantwortlich", "Deadline", "Status"]));
+  const needs = externalNeedsFor(ev.project);
+  if (needs.length) {
+    needs.forEach((t) => {
+      lines.push(line([
+        t.title.replace(NEED_PREFIX, ""),
+        t.assigneeName || "",
+        dateLabel(t.due),
+        t.status === "erledigt" ? "erledigt" : "offen",
+      ]));
+    });
+  } else {
+    lines.push(line(["— kein externer Bedarf —"]));
+  }
+
+  // ---- Programm ----
+  const pieces = piecesOfEvent(ev.project);
+  if (pieces.length) {
+    lines.push(line([]));
+    lines.push(line(["PROGRAMM"]));
+    lines.push(line(["Nr.", "Komponist:in", "Titel", "Status"]));
+    pieces.forEach((p, i) => {
+      const st = PIECE_STATUS[p.status] || PIECE_STATUS.idee;
+      lines.push(line([i + 1, p.komponist, p.titel, st.label]));
+    });
+  }
+
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `produktionsplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  setStatus("Produktionsplan heruntergeladen.");
 }
