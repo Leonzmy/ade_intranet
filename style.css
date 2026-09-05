@@ -2238,3 +2238,49 @@ details summary {
 
 .buehnenplan-upload { cursor: pointer; margin: 0; }
 .buehnenplan-upload .btn { font-size: 12px; padding: 5px 12px; display: inline-block; }
+
+/* ---------- Einverständniserklärungen ---------- */
+
+.einv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 10px;
+}
+
+.einv-count { font-size: 12.5px; color: var(--text-secondary); font-family: var(--font-mono); }
+
+.einv-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.einv-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.einv-row:last-child { border-bottom: none; }
+
+.einv-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; }
+.einv-meta { font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
+
+.einv-action {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.einv-action:hover { color: var(--accent); border-color: var(--accent); }
