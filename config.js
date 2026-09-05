@@ -51,8 +51,8 @@ ADMIN_KEY: "ade19-intern-9f3k2m",
   // Blatt und Vorlage für Einverständniserklärungen (Förderanträge)
   EINVERSTAENDNIS_SHEET_NAME: "Einverstaendnis",
   EINVERSTAENDNIS_TEMPLATES: {
-  "einzel": "https://docs.google.com/document/d/1fEV4yndlTgVUTPi_fq7HUd5v7s8F1H4be3BoUuYZ4qc/edit?tab=t.0",
-  "ensemble": "https://docs.google.com/document/d/1cwkYaHcNrOCDol050i1iz3XySj8C2ozGaofpkak1iMw/edit?tab=t.0",
+  "einzel": "https://docs.google.com/document/d/1fEV4yndlTgVUTPi_fq7HUd5v7s8F1H4be3BoUuYZ4qc/edit",
+  "ensemble": "https://docs.google.com/document/d/1cwkYaHcNrOCDol050i1iz3XySj8C2ozGaofpkak1iMw/edit",
 },
    
     // Feste Vertragsvorlagen (nicht im Frontend änderbar)
