@@ -1987,7 +1987,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:Y50");
+    const range = eventsSheetRange("A2:Z50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -2018,6 +2018,7 @@ async function loadEvents() {
           vorgespraech: r[22] || "",
           nachgespraech: r[23] || "",
           empfang: r[24] || "",
+          buehnenplan: r[25] || "",
         };
       })
       .filter((ev) => ev.project);
@@ -2177,6 +2178,19 @@ function renderEvents() {
                   value="${escapeHtml(ev[f.key] || "")}"
                   class="event-org-input" data-row="${ev.rowIndex}" data-col="${f.col}" data-field="${f.key}" />
               </div>`).join("")}
+
+            <div class="event-org-field">
+              <label>Bühnenplan</label>
+              <div class="buehnenplan-row">
+                ${ev.buehnenplan
+                  ? `<a href="${escapeHtml(ev.buehnenplan)}" target="_blank" rel="noopener" class="buehnenplan-link"><i class="ti ti-file-description"></i> Bühnenplan öffnen</a>`
+                  : `<span class="buehnenplan-leer">Noch keiner hochgeladen</span>`}
+                <label class="buehnenplan-upload">
+                  <input type="file" accept=".pdf,image/*" data-row="${ev.rowIndex}" class="buehnenplan-input" hidden />
+                  <span class="btn">${ev.buehnenplan ? "Ersetzen" : "Hochladen"}</span>
+                </label>
+              </div>
+            </div>
           </div>
         </details>
         <div class="event-resp-row">
@@ -2285,6 +2299,13 @@ function renderEvents() {
   container.querySelectorAll(".event-raum-select").forEach((sel) => {
     sel.addEventListener("change", () => {
       updateEventRaum(parseInt(sel.dataset.row, 10), sel.value);
+    });
+  });
+
+  container.querySelectorAll(".buehnenplan-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const file = input.files[0];
+      if (file) uploadBuehnenplan(parseInt(input.dataset.row, 10), file);
     });
   });
 
@@ -3739,6 +3760,7 @@ async function downloadProduktionsplan(rowIndex) {
   } else {
     push([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]);
   }
+  if (ev.buehnenplan) push(["Bühnenplan", ev.buehnenplan]);
 
   // ---- Ablauf & Organisation ----
   const orgVorhanden = ORG_FIELDS.filter((f) => (ev[f.key] || "").trim());
@@ -3916,4 +3938,62 @@ async function downloadProduktionsplan(rowIndex) {
   XLSX.writeFile(wb, `produktionsplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.xlsx`);
 
   setStatus("Produktionsplan heruntergeladen.");
+}
+
+// Bühnenplan hochladen: Datei ans Backend schicken, Link im Sheet ablegen
+async function uploadBuehnenplan(rowIndex, file) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    setStatus("Die Datei ist zu groß (maximal 5 MB).", true);
+    return;
+  }
+  if (!CONFIG.WEBAPP_URL || CONFIG.WEBAPP_URL.startsWith("TRAGE_HIER")) {
+    setStatus("WEBAPP_URL ist in config.js nicht eingetragen.", true);
+    return;
+  }
+
+  setStatus("Bühnenplan wird hochgeladen…");
+
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden."));
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch(CONFIG.WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "uploadBuehnenplan",
+        adminKey: CONFIG.ADMIN_KEY,
+        event: ev.project,
+        fileData: dataUrl,
+        fileName: file.name,
+        fileMime: file.type || "application/pdf",
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      setStatus(data.error || "Bühnenplan konnte nicht gespeichert werden.", true);
+      return;
+    }
+
+    // Link im Events-Blatt ablegen (Spalte Z)
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`Z${rowIndex}`)}?valueInputOption=RAW`;
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[data.fileUrl]] }),
+    });
+
+    ev.buehnenplan = data.fileUrl;
+    setStatus("Bühnenplan gespeichert.");
+    renderEvents();
+  } catch (e) {
+    setStatus("Bühnenplan konnte nicht hochgeladen werden: " + e.message, true);
+  }
 }
