@@ -2165,3 +2165,55 @@ details summary {
   flex: 1;
   min-width: 0;
 }
+
+/* ---------- Ablauf & Organisation ---------- */
+
+.event-org { border-bottom: 1px solid var(--border-soft); }
+
+.event-org-summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.event-org-summary::-webkit-details-marker { display: none; }
+.event-org-summary:hover { color: var(--text-secondary); }
+
+.event-org-summary::after {
+  content: "▸";
+  font-size: 10px;
+  transition: transform .15s ease;
+}
+
+.event-org[open] .event-org-summary::after { transform: rotate(90deg); }
+
+.event-org-body {
+  padding: 4px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--neutral-bg);
+}
+
+.event-org-field label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.event-org-input {
+  width: 100%;
+  font-family: var(--font);
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
