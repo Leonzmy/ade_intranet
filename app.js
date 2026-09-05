@@ -2150,7 +2150,7 @@ function renderEvents() {
           <div class="event-card-title">${escapeHtml(ev.project)}</div>
           <div class="event-header-right">
             <div class="event-completion ${complete ? "complete" : "incomplete"}">${doneCount}/${totalCount} erledigt</div>
-            <button type="button" class="produktionsplan-btn" data-row="${ev.rowIndex}" title="Produktionsplan als CSV"><i class="ti ti-file-download"></i></button>
+            <button type="button" class="produktionsplan-btn" data-row="${ev.rowIndex}" title="Produktionsplan als Excel-Datei"><i class="ti ti-file-spreadsheet"></i></button>
           </div>
         </div>
         <div class="event-date-row">
@@ -3626,131 +3626,176 @@ async function downloadProduktionsplan(rowIndex) {
 
   setStatus("Produktionsplan wird zusammengestellt…");
 
-  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const line = (cells) => cells.map(csvEscape).join(";");
   const dateLabel = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("de-DE") : "");
+  const rows = [];        // Zeilen als Array von Arrays
+  const merges = [];      // verbundene Zellen
+  const headingRows = []; // Zeilennummern der Abschnittsüberschriften
+  const labelRows = [];   // Zeilennummern der Tabellenköpfe
 
-  const lines = [];
+  const push = (cells) => { rows.push(cells); return rows.length - 1; };
+  const heading = (text) => {
+    const r = push([text]);
+    headingRows.push(r);
+    merges.push({ s: { r, c: 0 }, e: { r, c: 4 } });
+    return r;
+  };
+  const labels = (cells) => { labelRows.push(push(cells)); };
+  const leer = () => push([]);
 
   // ---- Kopf ----
-  lines.push(line(["PRODUKTIONSPLAN"]));
-  lines.push(line([]));
-  lines.push(line(["Event", ev.project]));
-  lines.push(line(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]));
-  lines.push(line(["Konzertdatum", dateLabel(ev.date)]));
-  lines.push(line(["Projektverantwortung", ev.verantwortlich || "—"]));
-  lines.push(line(["Erstellt am", new Date().toLocaleDateString("de-DE")]));
+  const titelZeile = push(["PRODUKTIONSPLAN"]);
+  merges.push({ s: { r: titelZeile, c: 0 }, e: { r: titelZeile, c: 4 } });
+  leer();
+  push(["Event", ev.project]);
+  push(["Festival", CONFIG.DEFAULT_FESTIVAL || ""]);
+  push(["Konzertdatum", dateLabel(ev.date)]);
+
+  const verantwortliche = (ev.verantwortlich || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (verantwortliche.length) {
+    verantwortliche.forEach((v, i) => {
+      const person = peopleList.find((p) => p.name === v);
+      push([i === 0 ? "Projektverantwortung" : "", v, person?.email || ""]);
+    });
+  } else {
+    push(["Projektverantwortung", "—"]);
+  }
+  push(["Erstellt am", new Date().toLocaleDateString("de-DE")]);
 
   // ---- Raum ----
-  lines.push(line([]));
-  lines.push(line(["VERANSTALTUNGSORT"]));
+  leer();
+  heading("VERANSTALTUNGSORT");
   const raum = raeumeData.find((r) => r.name === ev.raum);
   if (raum) {
-    lines.push(line(["Ort", raum.name]));
-    if (raum.adresse) lines.push(line(["Adresse", raum.adresse]));
-    lines.push(line(["Ansprechperson", raum.verantwortlich || "—"]));
-    lines.push(line(["E-Mail", raum.email || "—"]));
-    lines.push(line(["Telefon", raum.telefon || "—"]));
+    push(["Ort", raum.name]);
+    if (raum.adresse) push(["Adresse", raum.adresse]);
+    push(["Ansprechperson", raum.verantwortlich || "—"]);
+    push(["E-Mail", raum.email || "—"]);
+    push(["Telefon", raum.telefon ? String(raum.telefon) : "—"]);
   } else {
-    lines.push(line([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]));
+    push([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]);
   }
 
-  // ---- Termine (Proben aus dem Kalender + Konzert) ----
-  lines.push(line([]));
-  lines.push(line(["TERMINE"]));
-  lines.push(line(["Datum", "Beginn", "Ende", "Titel", "Ort"]));
+  // ---- Termine ----
+  leer();
+  heading("TERMINE");
+  labels(["Datum", "Beginn", "Ende", "Titel", "Ort"]);
 
   let termine = [];
   try {
     termine = await loadProbenFor(ev.project);
   } catch (e) {
-    // Proben nicht ladbar — Plan trotzdem erzeugen
+    // Plan trotzdem erzeugen, wenn die Proben nicht ladbar sind
   }
 
   termine.forEach((p) => {
-    const start = new Date(p.start.dateTime || p.start.date + "T00:00:00");
-    const end = p.end?.dateTime ? new Date(p.end.dateTime) : null;
-    lines.push(line([
-      start.toLocaleDateString("de-DE"),
-      p.start.dateTime ? start.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "ganztägig",
-      end ? end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
+    const st = new Date(p.start.dateTime || p.start.date + "T00:00:00");
+    const en = p.end?.dateTime ? new Date(p.end.dateTime) : null;
+    push([
+      st.toLocaleDateString("de-DE"),
+      p.start.dateTime ? st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "ganztägig",
+      en ? en.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : "",
       p.summary || "Probe",
       p.location || "",
-    ]));
+    ]);
   });
-
   if (ev.date) {
-    lines.push(line([dateLabel(ev.date), "", "", `KONZERT — ${ev.project}`, raum ? raum.name : (ev.raum || "")]));
+    push([dateLabel(ev.date), "", "", `KONZERT — ${ev.project}`, raum ? raum.name : (ev.raum || "")]);
   }
-  if (termine.length === 0 && !ev.date) lines.push(line(["— keine Termine hinterlegt —"]));
+  if (termine.length === 0 && !ev.date) push(["— keine Termine hinterlegt —"]);
 
-  // ---- Beteiligte mit Kontaktdaten ----
-  lines.push(line([]));
-  lines.push(line(["BETEILIGTE"]));
-  lines.push(line(["Name", "Rolle", "Instrument / Ansprechperson", "E-Mail", "Telefon"]));
-
+  // ---- Beteiligte ----
+  leer();
+  heading("BETEILIGTE");
+  labels(["Name", "Rolle", "Instrument / Ansprechperson", "E-Mail", "Telefon"]);
   const names = peopleOfEvent(ev);
   if (names.length) {
     names.forEach((name) => {
       const c = contactsData.find((x) => x.name === name);
       const extra = c ? (c.instrument || c.contactPerson || "") : "";
-      lines.push(line([name, c?.role || "", extra, c?.email || "", c?.phone || ""]));
+      push([name, c?.role || "", extra, c?.email || "", c?.phone ? String(c.phone) : ""]);
     });
   } else {
-    lines.push(line(["— noch niemand eingetragen —"]));
+    push(["— noch niemand eingetragen —"]);
   }
 
   // ---- Technical Rider ----
-  lines.push(line([]));
-  lines.push(line(["TECHNICAL RIDER — AUS DEM INVENTAR"]));
-  lines.push(line(["Equipment", "Anzahl", "Datum", "Notiz"]));
+  leer();
+  heading("TECHNICAL RIDER — AUS DEM INVENTAR");
+  labels(["Equipment", "Anzahl", "Datum", "Notiz"]);
   const projectBookings = bookings.filter((b) => b.project === ev.project);
   if (projectBookings.length) {
-    projectBookings.forEach((b) => {
-      lines.push(line([b.equipment, b.qty, dateLabel(b.date), b.note]));
-    });
+    projectBookings.forEach((b) => push([b.equipment, b.qty, dateLabel(b.date), b.note]));
   } else {
-    lines.push(line(["— nichts gebucht —"]));
+    push(["— nichts gebucht —"]);
   }
 
-  lines.push(line([]));
-  lines.push(line(["TECHNICAL RIDER — EXTERNES EQUIPMENT"]));
-  lines.push(line(["Bedarf", "Verantwortlich", "Deadline", "Status"]));
+  leer();
+  heading("TECHNICAL RIDER — EXTERNES EQUIPMENT");
+  labels(["Bedarf", "Verantwortlich", "Deadline", "Status"]);
   const needs = externalNeedsFor(ev.project);
   if (needs.length) {
-    needs.forEach((t) => {
-      lines.push(line([
-        t.title.replace(NEED_PREFIX, ""),
-        t.assigneeName || "",
-        dateLabel(t.due),
-        t.status === "erledigt" ? "erledigt" : "offen",
-      ]));
-    });
+    needs.forEach((t) => push([
+      t.title.replace(NEED_PREFIX, ""),
+      t.assigneeName || "",
+      dateLabel(t.due),
+      t.status === "erledigt" ? "erledigt" : "offen",
+    ]));
   } else {
-    lines.push(line(["— kein externer Bedarf —"]));
+    push(["— kein externer Bedarf —"]);
   }
 
   // ---- Programm ----
   const pieces = piecesOfEvent(ev.project);
   if (pieces.length) {
-    lines.push(line([]));
-    lines.push(line(["PROGRAMM"]));
-    lines.push(line(["Nr.", "Komponist:in", "Titel", "Status"]));
-    pieces.forEach((p, i) => {
-      const st = PIECE_STATUS[p.status] || PIECE_STATUS.idee;
-      lines.push(line([i + 1, p.komponist, p.titel, st.label]));
-    });
+    leer();
+    heading("PROGRAMM");
+    labels(["Nr.", "Komponist:in", "Titel"]);
+    pieces.forEach((p, i) => push([i + 1, p.komponist, p.titel]));
   }
 
-  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `produktionsplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // ---- Excel-Datei bauen ----
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!merges"] = merges;
+  ws["!cols"] = [{ wch: 26 }, { wch: 24 }, { wch: 30 }, { wch: 30 }, { wch: 24 }];
+
+  // Telefonnummern und alles andere als Text ausgeben, damit führende
+  // Nullen und Pluszeichen erhalten bleiben
+  Object.keys(ws).forEach((addr) => {
+    if (addr.startsWith("!")) return;
+    const cell = ws[addr];
+    if (cell.t === "n" && typeof cell.v === "number") return; // echte Zahlen bleiben Zahlen
+    cell.t = "s";
+  });
+
+  // Formatierung: Titel, Abschnittsüberschriften, Tabellenköpfe
+  const setStyle = (r, style, spanTo = 4) => {
+    for (let c = 0; c <= spanTo; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[addr]) ws[addr] = { t: "s", v: "" };
+      ws[addr].s = style;
+    }
+  };
+
+  setStyle(titelZeile, {
+    font: { bold: true, sz: 16, color: { rgb: "FFFFFF" } },
+    fill: { fgColor: { rgb: "23262F" } },
+    alignment: { vertical: "center" },
+  });
+
+  headingRows.forEach((r) => setStyle(r, {
+    font: { bold: true, sz: 11, color: { rgb: "FFFFFF" } },
+    fill: { fgColor: { rgb: "4A4F5C" } },
+    alignment: { vertical: "center" },
+  }));
+
+  labelRows.forEach((r) => setStyle(r, {
+    font: { bold: true, sz: 10 },
+    fill: { fgColor: { rgb: "E8EAF0" } },
+  }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Produktionsplan");
+  XLSX.writeFile(wb, `produktionsplan-${ev.project.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.xlsx`);
 
   setStatus("Produktionsplan heruntergeladen.");
 }
