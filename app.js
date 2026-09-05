@@ -1987,7 +1987,7 @@ function eventsSheetRange(a1) {
 
 async function loadEvents() {
   try {
-    const range = eventsSheetRange("A2:T50");
+    const range = eventsSheetRange("A2:Y50");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}`;
     const data = await apiFetch(url);
     const rows = data.values || [];
@@ -2013,6 +2013,11 @@ async function loadEvents() {
           programmtext: r[17] || "",
           verantwortlich: r[18] || "",
           raum: r[19] || "",
+          abendkasse: r[20] || "",
+          schluessel: r[21] || "",
+          vorgespraech: r[22] || "",
+          nachgespraech: r[23] || "",
+          empfang: r[24] || "",
         };
       })
       .filter((ev) => ev.project);
@@ -2162,6 +2167,18 @@ function renderEvents() {
             ${raeumeData.map((r) => `<option value="${escapeHtml(r.name)}" ${r.name === ev.raum ? "selected" : ""}>${escapeHtml(r.name)}</option>`).join("")}
           </select>
         </div>
+        <details class="event-org">
+          <summary class="event-org-summary"><i class="ti ti-clipboard-list"></i> Ablauf & Organisation</summary>
+          <div class="event-org-body">
+            ${ORG_FIELDS.map((f) => `
+              <div class="event-org-field">
+                <label>${escapeHtml(f.label)}</label>
+                <input type="text" placeholder="${escapeHtml(f.placeholder)}"
+                  value="${escapeHtml(ev[f.key] || "")}"
+                  class="event-org-input" data-row="${ev.rowIndex}" data-col="${f.col}" data-field="${f.key}" />
+              </div>`).join("")}
+          </div>
+        </details>
         <div class="event-resp-row">
           <div class="event-resp-label"><i class="ti ti-user-check"></i> Verantwortlich</div>
           <div class="resp-chips">
@@ -2271,6 +2288,12 @@ function renderEvents() {
     });
   });
 
+  container.querySelectorAll(".event-org-input").forEach((input) => {
+    input.addEventListener("change", () => {
+      updateEventOrgField(parseInt(input.dataset.row, 10), input.dataset.col, input.dataset.field, input.value.trim());
+    });
+  });
+
   container.querySelectorAll(".resp-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       toggleEventVerantwortlich(parseInt(chip.dataset.row, 10), chip.dataset.name);
@@ -2283,6 +2306,31 @@ function renderEvents() {
       updateEventDate(rowIndex, input.value);
     });
   });
+}
+
+const ORG_FIELDS = [
+  { key: "abendkasse", col: "U", label: "Abendkasse", placeholder: "Wer macht die Abendkasse?" },
+  { key: "schluessel", col: "V", label: "Schlüssel", placeholder: "Wer hat den Schlüssel?" },
+  { key: "vorgespraech", col: "W", label: "Vorgespräch", placeholder: "Moderation / Zeit" },
+  { key: "nachgespraech", col: "X", label: "Nachgespräch", placeholder: "Moderation / Zeit" },
+  { key: "empfang", col: "Y", label: "Empfang", placeholder: "Wer kümmert sich?" },
+];
+
+async function updateEventOrgField(rowIndex, col, field, value) {
+  const ev = eventsData.find((e) => e.rowIndex === rowIndex);
+  if (!ev) return;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${eventsSheetRange(`${col}${rowIndex}`)}?valueInputOption=RAW`;
+  try {
+    await apiFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [[value]] }),
+    });
+    ev[field] = value;
+    setStatus("Gespeichert.");
+  } catch (e) {
+    setStatus("Konnte nicht gespeichert werden: " + e.message, true);
+  }
 }
 
 async function updateEventRaum(rowIndex, raum) {
@@ -3653,8 +3701,12 @@ async function downloadProduktionsplan(rowIndex) {
   const verantwortliche = (ev.verantwortlich || "").split(",").map((x) => x.trim()).filter(Boolean);
   if (verantwortliche.length) {
     verantwortliche.forEach((v, i) => {
+      // Kontaktdaten bevorzugt aus der Kontaktliste, sonst aus den Stammdaten
+      const kontakt = contactsData.find((c) => c.name === v);
       const person = peopleList.find((p) => p.name === v);
-      push([i === 0 ? "Projektverantwortung" : "", v, person?.email || ""]);
+      const mail = kontakt?.email || person?.email || "";
+      const tel = kontakt?.phone ? String(kontakt.phone) : "";
+      push([i === 0 ? "Projektverantwortung" : "", v, mail, tel]);
     });
   } else {
     push(["Projektverantwortung", "—"]);
@@ -3673,6 +3725,14 @@ async function downloadProduktionsplan(rowIndex) {
     push(["Telefon", raum.telefon ? String(raum.telefon) : "—"]);
   } else {
     push([ev.raum ? ev.raum : "— kein Raum zugeordnet —"]);
+  }
+
+  // ---- Ablauf & Organisation ----
+  const orgVorhanden = ORG_FIELDS.filter((f) => (ev[f.key] || "").trim());
+  if (orgVorhanden.length) {
+    leer();
+    heading("ABLAUF & ORGANISATION");
+    orgVorhanden.forEach((f) => push([f.label, ev[f.key]]));
   }
 
   // ---- Termine ----
