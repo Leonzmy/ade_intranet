@@ -36,6 +36,8 @@ const CONFIG = {
   PROGRAMMHEFT_SHEET_NAME: "Programmheft",
     // Blatt für die Programmreihenfolge (Stücke je Event)
   PROGRAMM_SHEET_NAME: "Programm",
+    // Blatt mit den Veranstaltungsorten und ihren Verantwortlichen
+  RAEUME_SHEET_NAME: "Raeume",
   // Maximale Zeichenzahl für Kurzbios (gilt im öffentlichen Formular)
   BIO_MAX_CHARS: 800,
   // URL, unter der programmheft-formular.html erreichbar ist
