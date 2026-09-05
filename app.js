@@ -4071,8 +4071,9 @@ function renderEinverstaendnis() {
   const body = document.getElementById("einv-body");
   if (!body) return;
 
-  if (!CONFIG.EINVERSTAENDNIS_TEMPLATE || CONFIG.EINVERSTAENDNIS_TEMPLATE.startsWith("HIER_")) {
-    body.innerHTML = `<div class="empty">Erst die Google-Doc-Vorlage in config.js bei EINVERSTAENDNIS_TEMPLATE eintragen.</div>`;
+  const tpl = CONFIG.EINVERSTAENDNIS_TEMPLATES || {};
+  if (!tpl.einzel || tpl.einzel.startsWith("HIER_") || !tpl.ensemble || tpl.ensemble.startsWith("HIER_")) {
+    body.innerHTML = `<div class="empty">Erst beide Google-Doc-Vorlagen in config.js bei EINVERSTAENDNIS_TEMPLATES eintragen (einzel und ensemble).</div>`;
     return;
   }
 
@@ -4138,7 +4139,9 @@ async function erstelleEinverstaendnisLink(name, event, role) {
     body: JSON.stringify({
       action: "generateEinverstaendnis",
       adminKey: CONFIG.ADMIN_KEY,
-      templateUrl: CONFIG.EINVERSTAENDNIS_TEMPLATE,
+      templateUrl: role === "Ensemble"
+        ? CONFIG.EINVERSTAENDNIS_TEMPLATES.ensemble
+        : CONFIG.EINVERSTAENDNIS_TEMPLATES.einzel,
       name, event, role,
       fields: {
         NAME: name,
@@ -4148,6 +4151,11 @@ async function erstelleEinverstaendnisLink(name, event, role) {
         FESTIVAL: CONFIG.DEFAULT_FESTIVAL || "",
         EMAIL: contact?.email || "",
         ADRESSE: contact ? formatAddress(contact) : "",
+        TELEFON: contact?.phone || "",
+        // Aus den Kontaktdaten: bei Ensembles die Ansprechperson,
+        // bei Interpret:innen das Instrument
+        ANSPRECHPERSON: contact?.contactPerson || "",
+        INSTRUMENT: contact?.instrument || "",
       },
     }),
   });
