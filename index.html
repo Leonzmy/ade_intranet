@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Festival Dashboard</title>
-  <link rel="stylesheet" href="style.css?v=53" />
+  <link rel="stylesheet" href="style.css?v=54" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -211,6 +211,11 @@
 
         <div id="contracts-browser"></div>
 
+        <details class="templates-details" id="einv-section">
+          <summary class="templates-summary"><i class="ti ti-file-check"></i> Einverständniserklärungen (Förderantrag)</summary>
+          <div id="einv-body"></div>
+        </details>
+
         <details class="templates-details">
           <summary class="templates-summary"><i class="ti ti-file-text"></i> Vorlagen</summary>
           <div id="templates-list" class="inv-table"></div>
@@ -312,6 +317,6 @@
   </div>
 
   <script src="config.js"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=54"></script>
 </body>
 </html>
