@@ -238,6 +238,7 @@ async function enterApp() {
   await syncContacts();
   await loadContractTemplates();
   await loadContractDetails();
+  await loadEinverstaendnis();
   await loadProgrammheft();
   await syncProgrammheft();
   await loadProgramm();
@@ -785,7 +786,7 @@ function switchView(view) {
   if (view === "events") renderEvents();
   if (view === "inventory") renderInventory();
   if (view === "contacts") renderContacts();
-  if (view === "contracts") { renderTemplates(); renderContractsBrowser(); }
+  if (view === "contracts") { renderTemplates(); renderContractsBrowser(); renderEinverstaendnis(); }
   renderEyebrows();
   if (view === "programmheft") renderProgrammheft();
 }
@@ -4036,5 +4037,170 @@ async function downloadBuehnenplanDatei(ev) {
     URL.revokeObjectURL(url);
   } catch (e) {
     setStatus("Bühnenplan konnte nicht mitgeladen werden — bitte direkt in Drive öffnen.", true);
+  }
+}
+
+// ---------- Einverständniserklärungen ----------
+
+let einverstaendnisData = []; // [{rowIndex, name, event, role, docUrl, signStatus, ..., token}]
+
+function einvSheetRange(a1) {
+  return `${encodeURIComponent(CONFIG.EINVERSTAENDNIS_SHEET_NAME)}!${a1}`;
+}
+
+async function loadEinverstaendnis() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${einvSheetRange("A2:K300")}`;
+    const data = await apiFetch(url);
+    einverstaendnisData = (data.values || [])
+      .map((r, i) => ({
+        rowIndex: i + 2,
+        name: r[0], event: r[1], role: r[2] || "",
+        docUrl: r[3] || "", createdAt: r[4] || "",
+        signStatus: r[5] || "offen", signedAt: r[6] || "", signedBy: r[7] || "",
+        signedIp: r[8] || "", signedPdfUrl: r[9] || "", token: r[10] || "",
+      }))
+      .filter((e) => e.name);
+  } catch (e) {
+    // Blatt evtl. noch nicht angelegt — kein harter Fehler
+    einverstaendnisData = [];
+  }
+}
+
+function renderEinverstaendnis() {
+  const body = document.getElementById("einv-body");
+  if (!body) return;
+
+  if (!CONFIG.EINVERSTAENDNIS_TEMPLATE || CONFIG.EINVERSTAENDNIS_TEMPLATE.startsWith("HIER_")) {
+    body.innerHTML = `<div class="empty">Erst die Google-Doc-Vorlage in config.js bei EINVERSTAENDNIS_TEMPLATE eintragen.</div>`;
+    return;
+  }
+
+  // Alle Beteiligten über alle Events
+  const alle = [];
+  eventsData.forEach((ev) => {
+    PEOPLE_ROLES.forEach((r) => {
+      (ev[r.key] || "").split(",").map((x) => x.trim()).filter(Boolean).forEach((name) => {
+        alle.push({ name, event: ev.project, role: r.label });
+      });
+    });
+  });
+
+  const offen = alle.filter((p) => {
+    const e = einverstaendnisData.find((x) => x.name === p.name && x.event === p.event);
+    return !e || e.signStatus !== "signiert";
+  });
+
+  const rows = alle.length
+    ? alle.map((p) => {
+        const e = einverstaendnisData.find((x) => x.name === p.name && x.event === p.event);
+        const status = !e ? "offen" : e.signStatus === "signiert" ? "signiert" : "erstellt";
+        const label = status === "signiert" ? "Unterschrieben" : status === "erstellt" ? "Erstellt" : "Nicht erstellt";
+        const cls = status === "signiert" ? "done" : status === "erstellt" ? "created" : "pending";
+        return `<div class="einv-row">
+          <div class="einv-name">${escapeHtml(p.name)}<div class="einv-meta">${escapeHtml(p.event)} · ${escapeHtml(p.role)}</div></div>
+          <span class="contract-person-status ${cls}">${label}</span>
+          ${e && e.signStatus === "signiert"
+            ? `<a class="einv-action" href="${escapeHtml(e.signedPdfUrl)}" target="_blank" rel="noopener" title="Signierte Erklärung"><i class="ti ti-file-check"></i></a>`
+            : `<button type="button" class="einv-action einv-link-btn" data-name="${escapeHtml(p.name)}" data-event="${escapeHtml(p.event)}" data-role="${escapeHtml(p.role)}" title="Erstellen und Link kopieren"><i class="ti ti-link"></i></button>`}
+        </div>`;
+      }).join("")
+    : `<div class="empty">Noch keine Beteiligten bei den Events eingetragen.</div>`;
+
+  body.innerHTML = `
+    <div class="einv-header">
+      <span class="einv-count">${alle.length - offen.length} von ${alle.length} unterschrieben</span>
+      <button type="button" class="btn" id="einv-copy-all">Alle offenen Links kopieren</button>
+    </div>
+    <div class="einv-list">${rows}</div>`;
+
+  body.querySelectorAll(".einv-link-btn").forEach((btn) => {
+    btn.addEventListener("click", () => erstelleEinverstaendnisUndKopiere(btn.dataset.name, btn.dataset.event, btn.dataset.role));
+  });
+
+  const allBtn = document.getElementById("einv-copy-all");
+  if (allBtn) allBtn.addEventListener("click", () => kopiereAlleEinvLinks(offen));
+}
+
+// Erklärung erzeugen (falls nötig) und Signatur-Link zurückgeben
+async function erstelleEinverstaendnisLink(name, event, role) {
+  const vorhanden = einverstaendnisData.find((x) => x.name === name && x.event === event);
+  if (vorhanden && vorhanden.token && vorhanden.docUrl) {
+    return `${CONFIG.SIGN_FORM_URL}?type=einverstaendnis&row=${vorhanden.rowIndex}&token=${encodeURIComponent(vorhanden.token)}`;
+  }
+
+  const contact = contactsData.find((c) => c.name === name);
+  const ev = eventsData.find((e) => e.project === event);
+
+  const res = await fetch(CONFIG.WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "generateEinverstaendnis",
+      adminKey: CONFIG.ADMIN_KEY,
+      templateUrl: CONFIG.EINVERSTAENDNIS_TEMPLATE,
+      name, event, role,
+      fields: {
+        NAME: name,
+        EVENT: event,
+        ROLLE: role,
+        DATUM: ev?.date || "",
+        FESTIVAL: CONFIG.DEFAULT_FESTIVAL || "",
+        EMAIL: contact?.email || "",
+        ADRESSE: contact ? formatAddress(contact) : "",
+      },
+    }),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || "Erklärung konnte nicht erstellt werden.");
+
+  return `${CONFIG.SIGN_FORM_URL}?type=einverstaendnis&row=${data.row}&token=${encodeURIComponent(data.token)}`;
+}
+
+async function erstelleEinverstaendnisUndKopiere(name, event, role) {
+  setStatus("Erklärung wird vorbereitet…");
+  try {
+    const link = await erstelleEinverstaendnisLink(name, event, role);
+    await loadEinverstaendnis();
+    renderEinverstaendnis();
+    try {
+      await navigator.clipboard.writeText(link);
+      setStatus(`Link für ${name} kopiert.`);
+    } catch (e) {
+      window.prompt("Link kopieren (Strg+C):", link);
+    }
+  } catch (e) {
+    setStatus(e.message, true);
+  }
+}
+
+// Alle offenen Erklärungen auf einmal erzeugen und als Liste kopieren
+async function kopiereAlleEinvLinks(offen) {
+  if (offen.length === 0) {
+    setStatus("Alle Erklärungen sind bereits unterschrieben.");
+    return;
+  }
+  setStatus(`${offen.length} Erklärungen werden vorbereitet…`);
+
+  const zeilen = [];
+  for (const p of offen) {
+    try {
+      const link = await erstelleEinverstaendnisLink(p.name, p.event, p.role);
+      const contact = contactsData.find((c) => c.name === p.name);
+      zeilen.push(`${p.name}${contact?.email ? ` <${contact.email}>` : ""}\n${link}\n`);
+    } catch (e) {
+      zeilen.push(`${p.name}: FEHLER — ${e.message}\n`);
+    }
+  }
+
+  await loadEinverstaendnis();
+  renderEinverstaendnis();
+
+  const text = zeilen.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(`${offen.length} Links kopiert — als Liste mit Namen und E-Mail.`);
+  } catch (e) {
+    window.prompt("Links kopieren (Strg+C):", text);
   }
 }
